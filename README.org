@@ -10,9 +10,13 @@ Both commercial and free versions of the language tend to attract programmers wh
 Here's an example:
 
 #+begin_src k
-*+|'10(|+\)\1 1  /the first 11 numbers of the fibonacci sequence
-f:{*+|'x(|+\)\1 1} /a function to generate the first x+1 numbers of fibonacci
-f'2 8 9  /generate a list containing f[2], f[8], and f[9]
+ *+|'10(|+\)\1 1  /the first 11 numbers of the fibonacci sequence
+1 1 2 3 5 8 13 21 34 55 89
+ f:{*+|'x(|+\)\1 1} /a function to generate the first x+1 numbers of fibonacci
+ f'2 8 9  /apply f to each element in the list (2 8 9), producing a new list
+(1 1 2
+ 1 1 2 3 5 8 13 21 34
+ 1 1 2 3 5 8 13 21 34 55)
 #+end_src
 
 ** Typical K features
