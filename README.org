@@ -1,0 +1,16 @@
+This is an experiment with multiple aims:
+
+1. to get more comfortable with modern C++
+2. to deeply understand hardware acceleration
+3. to create a variation of an existing programming language
+
+I will generally follow the approach of [[https://craftinginterpreters.com/][Crafting Interpreters]], but with a few key changes:
+
+1. target language is K
+2. implementation language is C++ rather than Java or C
+3. the implementation should employ hardware acceleration wherever it is both practical and beneficial.
+
+Why "element"?
+- chemistry puns: K is potassium, CUDA (Cu) is copper
+- vector languages deal with "elements of a vector" frequently
+- naming is hard
