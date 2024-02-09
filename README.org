@@ -1,14 +1,62 @@
-This is an experiment with multiple aims:
+* Element
+A dialect of K that transparently computes using either CPU or GPU based on the data it gets at run-time.
+At least, that's the plan.
+
+** K crash course
+The K programming language is terse and suited to rapid prototyping and number crunching.
+Commercial implementations are used by quants to make number go up.
+Open source implementations are used by people who like Project Euler, code golf, and puzzle solving.
+Both commercial and free versions of the language tend to attract programmers who appreciate a certain spare and severe kind of elegance.
+Here's an example:
+
+#+begin_src k
+*+|'10(|+\)\1 1  /the first 11 numbers of the fibonacci sequence
+f:{*+|'x(|+\)\1 1} /a function to generate the first x+1 numbers of fibonacci
+f'2 8 9  /generate a list containing f[2], f[8], and f[9]
+#+end_src
+
+** Typical K features
+Implementations vary, but most Ks have:
+- an interpreter
+- dynamic typing
+- eager evaluation
+- simple scoping rules (global or local variables, no lexical scoping)
+- basic interaction with the host system
+  + =\cd= to change directory without leaving the interpreter
+  + run commands through =/bin/sh= such as =\ls=, =\pwd=
+  + built-in file and socket I/O
+- a method for loading/executing other K scripts
+- a handful of basic types: int, float, char, symbol, list, dict, function
+- no user-defined types
+- arithmetic operations defined for single values as well as collections =1+2 0 3= is =3 1 4=
+- structural operations on collections
+- right-to-left evaluation and no operator precedence: =2*3+4= is =2*(3+4)=
+- partial application or "projections" instead of closures: ={x+y+z}[1;;3]= is ={1+x+3}=
+
+** Features particular to this dialect
+This variation of K aims for feature parity with the above "typical" K, except:
+- implicit hardware acceleration by default
+  + small data processed on one CPU
+  + larger or large and irregular data processed on multiple CPUs
+  + really large and regular data processed on GPU
+- incrementally compiled line-by-line, so still "feels" interpreted
+- separate syntax for declaration and assignment
+- lexical scoping instead of global/local scopes
+- no =\cd= or sending commands to =/bin/sh=
+- string data type (distinct from "list of char")
+
+* Development
+This project is in the experimental phase, and aims to fulfill my goals at the same time:
 
 1. to get more comfortable with modern C++
 2. to deeply understand hardware acceleration
-3. to create a variation of an existing programming language
+3. to create a minor variation of an existing programming language
 
 I will generally follow the approach of [[https://craftinginterpreters.com/][Crafting Interpreters]], but with a few key changes:
 
-1. target language is K
-2. implementation language is C++ rather than Java or C
-3. the implementation should employ hardware acceleration wherever it is both practical and beneficial.
+1. different target language
+2. different implementation language (C++)
+3. hardware acceleration
 
 Why "element"?
 - chemistry puns: K is potassium, CUDA (Cu) is copper
