@@ -49,6 +49,14 @@ This variation of K aims for feature parity with the above "typical" K, except:
 - no =\cd= or sending commands to =/bin/sh=
 - string data type (distinct from "list of char")
 
+* Install
+To use this project, download this repo and compile from source using NVIDIA's =nvcc= compiler:
+#+begin_src sh
+$ cd element
+$ nvcc -o element src/main.cu
+$ ./element
+#+end_src
+
 * Development
 This project is in the experimental phase, and aims to fulfill my goals at the same time:
 

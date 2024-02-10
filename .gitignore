@@ -4,3 +4,6 @@
 *.ptx
 *.cubin
 *.fatbin
+
+test/doctest.h
+a.out

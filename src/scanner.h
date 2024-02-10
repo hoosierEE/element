@@ -1,20 +1,4 @@
-// Perhaps a crazy idea.
-// Compiler and interpreter for a K dialect, implemented in cuda C++.
-//
-// compile:
-//   $ nvcc main.cu
-//
-// run a script file:
-//   $ ./a.out < filename.ext
-//
-// eval a string:
-//   $ ./a.out "a:7; a*2+3"  # prints 35
-//
-// start interactive interpreter:
-//   $ ./a.out  # start interpreter
-#include <iostream>
 #include <map>
-#include <stack>
 #include <vector>
 
 // ascii [32-127) (note space at start)
@@ -27,64 +11,24 @@
 // ________pp_________________p_______________________________p_p__p__________________________p_p_ punctuation
 // _v_vvvv___vvvvvv__________v_vvvvv___________________________v_vv____________________________v_v verb
 
-enum Err {
-  OK,
-  ERR_UNBAL, // unbalanced parentheses
-};
-
-enum Code {
-  END, //end of line
-  COMMENT,QUOTE,SPACE,STR,ADVERB,ALPHA,NUMBER,SYMBOL, //syntax classes
-  LP,RP,LS,RS,LC,RC,COLON,DOT,SEM,VERB, //more syntax classes
-  UNK //unknown, catch-all
-};
-
-class Repl {
+class Scanner {
 public:
-  bool quote=false;
-  Err syntaxErr=OK;
-  Err parseErr=OK;
-  std::map<Err,std::string> msyntax{
-    {OK,""},
-    {ERR_UNBAL,"unbalanced parentheses"}
-  };
-  std::map<Err,std::string> mparse{
-    {OK,""}
-  };
-  std::stack<char> bracket_stack;
   std::string line;
-  std::vector<Code> tokens;
+  enum Err {
+    OK,
+    ERR_UNBAL, // unbalanced parentheses
+  };
+  enum Code {
+    END, //end of line
+    COMMENT,QUOTE,SPACE,STR,ADVERB,ALPHA,NUMBER,SYMBOL, //syntax classes
+    LP,RP,LS,RS,LC,RC,COLON,DOT,SEM,VERB, //more syntax classes
+    UNK, //unknown, catch-all
+  };
   Err read(std::string);
-  Err eval();
-  void print();
-  void repl(std::string);
-  void pbal(Err*,char);
 };
 
-
-void Repl::repl(std::string line) {
-  Err e{OK};
-  if ((e=read(line)) != OK) std::cout << "`syntax\n" << msyntax[e] << std::endl;
-  if ((e=eval())     != OK) std::cout <<  "`parse\n" <<  mparse[e] << std::endl;
-  print();
-}
-
-
-bool Repl::pbal(Err *e, char c) {
-  // set Repl error code if paren is not balanced
-  auto& s = this->bracket_stack;
-  if(s.empty() || s.top()!=c) {
-    *e = OK;
-    this->syntaxErr = ERR_UNBAL;
-    return false;
-  }
-  s.pop();
-  return s.empty();
-}
-
-
-Err Repl::read(std::string line) {
-  Err e = OK;
+Scanner::Err Scanner::read(std::string line) {
+  Scanner::Err e = OK;
   this->line = line; //make a copy of the original
   int sz = line.size();
   bool comment=false;
@@ -126,25 +70,4 @@ Err Repl::read(std::string line) {
   }
   t[line.size()]=END;
   return e;
-}
-
-
-Err Repl::eval(){return OK;}
-void Repl::print(){
-  for (auto &x : this->tokens) {
-    std::cout << x << " ";
-  }
-  std::cout << std::endl;
-}
-
-
-int main(int argc, char*argv[]) {
-  auto repl = Repl();
-  // repl or stdin
-  if (argc == 1)
-    for (std::string line; std::getline(std::cin, line);)
-      repl.repl(line);
-
-  // string
-  if (argc == 2) repl.repl(std::string(argv[1]));
 }
