@@ -5,5 +5,5 @@
 *.cubin
 *.fatbin
 
-test/doctest.h
+tests/doctest.h
 a.out
