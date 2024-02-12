@@ -16,19 +16,18 @@ public:
   std::string line;
   enum Err {
     OK,
-    ERR_UNBAL, // unbalanced parentheses
+    ERR_UNBAL, //unbalanced parentheses
   };
   enum Code {
     END, //end of line
-    COMMENT,QUOTE,SPACE,STR,ADVERB,ALPHA,NUMBER,SYMBOL, //syntax classes
-    LP,RP,LS,RS,LC,RC,COLON,DOT,SEM,VERB, //more syntax classes
-    UNK, //unknown, catch-all
+    UNK, //UNKnown - perhaps a syntax error
+    COMMENT,QUOTE,SPACE,STR,ADVERB,ALPHA,NUMBER,
+    SYMBOL,LP,RP,LS,RS,LC,RC,COLON,DOT,SEM,VERB,
   };
-  Err read(std::string);
+  void read(std::string);
 };
 
-Scanner::Err Scanner::read(std::string line) {
-  Scanner::Err e = OK;
+void Scanner::read(std::string line) {
   this->line = line; //make a copy of the original
   int sz = line.size();
   bool comment=false;
@@ -69,5 +68,4 @@ Scanner::Err Scanner::read(std::string line) {
     else {t.push_back(UNK);}
   }
   t[line.size()]=END;
-  return e;
 }

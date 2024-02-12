@@ -58,6 +58,7 @@ $ ./element
 #+end_src
 
 * Development
+
 This project is in the experimental phase, and aims to fulfill my goals at the same time:
 
 1. to get more comfortable with modern C++
@@ -70,7 +71,10 @@ I will generally follow the approach of [[https://craftinginterpreters.com/][Cra
 2. different implementation language (C++)
 3. hardware acceleration
 
-Why "element"?
+Why the name "element"?
 - chemistry puns: K is potassium, CUDA (Cu) is copper
 - vector languages deal with "elements of a vector" frequently
 - naming is hard
+
+** Testing
+Currently using [[https://github.com/doctest/doctest/tree/master/doc/markdown#reference][doctest]].
