@@ -1,6 +1,5 @@
 #define DOCTEST_CONFIG_IMPLEMENT
 #include "doctest.h" //https://github.com/doctest/doctest
-
 #include "runtime.h" //Runtime
 #include <csignal>
 #include <filesystem>
@@ -8,11 +7,11 @@
 #include <iostream>
 
 // https://man.freebsd.org/cgi/man.cgi?query=sysexits&apropos=0&sektion=0&manpath=FreeBSD+4.3-RELEASE&format=html
-#define EX_USAGE 64 //The command was used incorrectly
+#define EX_USAGE   64 //The command was used incorrectly
 #define EX_DATAERR 65 //The input data was incorrect in some way.
 #define EX_NOINPUT 66 //An input file did not exist or was not readable.
-#define EX_IOERR 74 //An error occurred while doing I/O on some file.
-#define EX_NOHOST 68 //The host specified did not exist.
+#define EX_IOERR   74 //An error occurred while doing I/O on some file.
+#define EX_NOHOST  68 //The host specified did not exist.
 
 // credit goes to: https://gist.github.com/clwyatt/58169c7b0053c49cc36cca67f4c77cdc
 volatile sig_atomic_t global_status_flag = 0;
@@ -41,7 +40,11 @@ int main(int argc, char *argv[]) {
   for (int i=1; i < argc; i++) {
     auto arg = std::string(argv[i]);
     if (arg == "-h" or arg == "--help") {
-      std::cout << "help message" << std::endl;
+      std::cout << "Element version 0" << std::endl;
+      std::cout << "usage:" << std::endl;
+      std::cout << argv[0] << " --help    # (or -h) print this message" << std::endl;
+      std::cout << argv[0] << "           # interactive REPL" << std::endl;
+      std::cout << argv[0] << " filename  # run a script file" << std::endl;
       return 0;
     }
   }
@@ -49,20 +52,14 @@ int main(int argc, char *argv[]) {
   install_handler(); //handle ^C
 
   // automatically run tests at runtime
-  // a.out inherits all the options of doctest
+  // a.out inherits all doctest options
   doctest::Context context;
   context.setOption("minimal", true);
   context.applyCommandLine(argc,argv);
   int res = context.run();
   if (context.shouldExit()) {return res;}
 
-  if (argc > 3) {
-    std::cerr << "unknown arguments" << std::endl;
-    // https://man.freebsd.org/cgi/man.cgi?query=sysexits&apropos=0&sektion=0&manpath=FreeBSD+4.3-RELEASE&format=html
-    return EX_USAGE; //"The command was used incorrectly"
-  }
-
-  Runtime runtime;
+  Runtime rt;
 
   // repl (or stdin)
   if (argc == 1) {
@@ -79,12 +76,11 @@ int main(int argc, char *argv[]) {
       }
       if (std::cin.eof()) {break;} // handle Ctrl+D
 
-      runtime.error(); // display error but don't crash. reset error each loop.
-
-      runtime.read(line);
-      runtime.parse();
-      runtime.eval();
-      runtime.print();
+      // display any errors but don't crash - just reset error each loop
+      if (rt.read(line)) {rt.error(); continue;}
+      if (rt.parse()) {rt.error(); continue;}
+      if (rt.eval()) {rt.error(); continue;}
+      rt.print();
     }
   }
 
@@ -96,14 +92,13 @@ int main(int argc, char *argv[]) {
       if (file.is_open()) {
         std::string line;
         while (std::getline(file, line)) {
-          // Don't continue if we previously detected an error
-          if (runtime.error()) {return EX_DATAERR;}
-          runtime.read(line);
-          runtime.parse();
-          runtime.eval();
-          runtime.print();
+          // Crash on error
+          if (rt.read(line)) {rt.error(); return EX_DATAERR;}
+          if (rt.parse()) {rt.error(); return EX_DATAERR;}
+          if (rt.eval()) {rt.error(); return EX_DATAERR;}
+          rt.print();
         }
-        // runtime.tokens.push_back(std::make_tuple(runtime.lineNum,0,Runtime::END,""));
+        rt.tokens.push_back(std::make_tuple(rt.lineNum,0,Runtime::END,""));
       } else {
         std::cerr << "unable to open file" << std::endl;
         return EX_NOINPUT;
@@ -111,17 +106,8 @@ int main(int argc, char *argv[]) {
     }
   }
 
-  // string
-  if (argc == 3 and std::string(argv[1]) == "--eval") {// ./a.out --eval "2+3"
-    runtime.read(std::string(argv[2]));
-    runtime.parse();
-    runtime.eval();
-    runtime.print();
-  }
-
   return 0;
 }
-
 
 // TEST_CASE("runtime class") {
 //   Runtime rt;

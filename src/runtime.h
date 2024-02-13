@@ -1,6 +1,5 @@
 #ifndef RUNTIME_H_
 #define RUNTIME_H_
-
 #include <iostream>
 #include <map>
 #include <vector>
@@ -16,60 +15,28 @@
 // ________pp_________________p_______________________________p_p__p__________________________p_p_ punctuation
 // _v_vvvv___vvvvvv__________v_vvvvv___________________________v_vv____________________________v_v verb
 
+#define SYNTAX_ENUM(F)                                        \
+  F(OK) F(UNK) F(ERR)                                         \
+  F(LC) F(RC)                                                 \
+  F(LP) F(RP)                                                 \
+  F(LS) F(RS)                                                 \
+  F(STRING) F(NAME) F(NUMBER) F(COMMENT) F(SYMBOL)            \
+  F(IO) F(STENCIL) F(EACHLEFT) F(EACHRIGHT) F(LINES) F(BYTES) \
+  F(ALPHA) F(AMP) F(AT) F(BACKSLASH) F(BACKTICK) F(BANG)      \
+  F(CARET) F(COLON) F(COMMA) F(DASH) F(DIGIT) F(DOLLAR)       \
+  F(DOT) F(DQUOTE) F(END) F(EQUAL) F(HASH) F(HUH)             \
+  F(LESS) F(LF) F(MORE) F(PERCENT) F(PLUS) F(QUOTE)           \
+  F(SEMI) F(SLASH) F(SPACE) F(STAR) F(TAB) F(TILDE)           \
+  F(UNDERBAR) F(VERT)
+#define MAKE_ENUM(v) v,
+#define MAKE_REPR(v) #v,
 
 class Runtime {
-  // Compiler and interpreter internals:
-  // Read and attempt to parse one line at a time, but some constructs
-  // span multiple lines e.g:
-  // {
-  // ...
-  // }
-
 public:
-  enum Syntax {
-    OK,UNK,ERR, //error codes
-    LC, RC, LP, RP, LS, RS, //brackets
-    STRING, NAME, NUMBER, COMMENT, SYMBOL, IO, //arbitrary length tokens
-    STENCIL, EACHLEFT, EACHRIGHT, LINES, BYTES, // //2-char tokens: ': \: /: 0: 1:
-
-    // single-char tokens:
-    ALPHA,     // [a-zA-Z]
-    AMP,       // &
-    AT,        // @
-    BACKSLASH,
-    BACKTICK,  // `
-    BANG,      // !
-    CARET,     // ^
-    COLON,     // :
-    COMMA,     // ,
-    DASH,      // -
-    DIGIT,     // [0-9]
-    DOLLAR,    // $
-    DOT,       // .
-    DQUOTE,    // "
-    END,       // end-of-file
-    EQUAL,     // =
-    HASH,      // #
-    HUH,       // ?
-    LESS,      // <
-    LF,        // \n
-
-    MORE,      // >
-    PERCENT,   // %
-    PLUS,      // +
-    QUOTE,     // '
-    SEMI,      // ;
-    SLASH,     // /
-    SPACE,     // ( )
-    STAR,      // *
-    TAB,       // \t
-    TILDE,     // ~
-    UNDERBAR,  // _
-    VERT,      // |
-  };
+  enum Syntax {SYNTAX_ENUM(MAKE_ENUM)};
+  std::vector<std::string> SyntaxRepr{SYNTAX_ENUM(MAKE_REPR)};
 
   const std::string alphabet = "~`!@#$%^&*()_-+={[]}|:;<,>.?"; //partial alphabet
-
   const std::map<char,Syntax> syntaxMap = {
     {'{',LC},{'}',RC},
     {'(',LP},{')',RP},
@@ -104,17 +71,18 @@ public:
     {'_',UNDERBAR},
     {'|',VERT},
   };
-
-  std::string line; //current line
-  int lineNum=1; //position in file or multi-line expr
-  std::stack<Syntax> tokenStack; // {[()[]]{}[]}[] etc.
-  std::vector<std::tuple<int,int,Syntax,std::string> > tokens; //line, column, type, value
   Syntax err = OK;
+  int lineNum = 1;
+  std::string line; //current line
+  int stringStart = 0; //start of string within current line
+  std::string currentString = ""; //(possibly multi-line) current string token
+  std::stack<char> tokenStack; //for nested brackets
+  std::vector<std::tuple<int,int,Syntax,std::string> > tokens; //line, column, type, value
 
   // methods
-  void read(std::string);
-  void parse();
-  void eval();
+  bool read(std::string);
+  bool parse();
+  bool eval();
   void print();
   bool error();
 

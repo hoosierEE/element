@@ -44,16 +44,19 @@ This variation of K aims for feature parity with the above "typical" K, except:
   + larger or large and irregular data processed on multiple CPUs
   + really large and regular data processed on GPU
 - incrementally compiled line-by-line, so still "feels" interpreted
-- separate syntax for declaration and assignment
-- lexical scoping instead of global/local scopes
+- lexical scoping
+- closures
 - no =\cd= or sending commands to =/bin/sh=
 - string data type (distinct from "list of char")
+- new syntax
+  - =:= creates a new variable
+  - =::= redefines an existing variable
 
 * Install
-To use this project, download this repo and compile from source using NVIDIA's =nvcc= compiler:
+To build this, download the repo then compile from source using NVIDIA's =nvcc= compiler:
 #+begin_src sh
 $ cd element
-$ nvcc -o element src/main.cu
+$ nvcc --Werror all-warnings -o element src/runtime.cc src/main.cc
 $ ./element
 #+end_src
 
