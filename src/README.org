@@ -1,0 +1,17 @@
+#+title: Readme
+
+ascii [32-127) parts of speech
+#+begin_src
+ !"#$%&'()*+,-./0123456789:;<=>?@ABCDEFGHIJKLMNOPQRSTUVWXYZ[\]^_`abcdefghijklmnopqrstuvwxyz{|}~
+wvqvvvvappvvvvavnnnnnnnnnnvpvvvvvnnnnnnnnnnnnnnnnnnnnnnnnnnpvpvvpnnnnnnnnnnnnnnnnnnnnnnnnnnpvpv
+w______________________________________________________________________________________________ whitespace
+__q____________________________________________________________________________________________ quote
+_______a_______a____________________________________________a__________________________________ adverb
+________________nnnnnnnnnn_______nnnnnnnnnnnnnnnnnnnnnnnnnn______nnnnnnnnnnnnnnnnnnnnnnnnnn____ noun
+________pp_________________p_______________________________p_p__p__________________________p_p_ punctuation
+_v_vvvv___vvvvvvvv________v_vvvvv___________________________v_vv____________________________v_v verb
+#+end_src
+
+Note certain single characters (=/=, =\=) can be either a verb, or part of an adverb, for example:
+- =x/y= encode or join (verb)
+- =f/x= reduce (adverb)

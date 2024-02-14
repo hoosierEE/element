@@ -98,7 +98,7 @@ int main(int argc, char *argv[]) {
           if (rt.eval()) {rt.error(); return EX_DATAERR;}
           rt.print();
         }
-        rt.tokens.push_back(std::make_tuple(rt.lineNum,0,Runtime::END,""));
+        rt.tokens.push_back(std::make_tuple(rt.linenum,0,Runtime::END,""));
       } else {
         std::cerr << "unable to open file" << std::endl;
         return EX_NOINPUT;
