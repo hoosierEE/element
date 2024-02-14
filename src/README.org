@@ -1,4 +1,5 @@
 #+title: notes
+Just a catch-all readme for miscellaneous thoughts.
 
 ascii [32-127) parts of speech
 #+begin_src
