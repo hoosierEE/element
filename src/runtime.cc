@@ -3,7 +3,6 @@
 constexpr bool isdigit(char c) {return '0'<=c and c<='9';}
 constexpr bool isalpha(char c) {return ('a'<=c and c<='z') or ('A'<=c and c<='Z');}
 bool Runtime::read(std::string line) {//return true if error
-
   this->line = line;
   auto &num = this->linenum;
   auto &t = this->tokens;
@@ -14,16 +13,13 @@ bool Runtime::read(std::string line) {//return true if error
   int sz = line.size();
   for (i=0;i<sz;i++) {
     char c=line[i];
-
     // continue processing a string
     if (st) {
       if (c=='"') {
         if (cs.back()=='\\') {cs[cs.size()-1] = '"';}
-        else {t.push_back(std::make_tuple(num,i,STRING,cs)); st = false; cs = "";}
+        else {t.push_back(std::make_tuple(num,i,STRING,cs)); st=false; cs="";}
       }
-      else {
-        cs += std::string(1,c);
-      }
+      else {cs += std::string(1,c);}
       continue;
     }
 
@@ -52,7 +48,6 @@ bool Runtime::read(std::string line) {//return true if error
     default: // arbitrary-length tokens
       if (c=='0' and i+1<sz and line[i+1]==':') {t.push_back(std::make_tuple(num,i,LINES,"0:")); i++; break;}
       if (c=='1' and i+1<sz and line[i+1]==':') {t.push_back(std::make_tuple(num,i,BYTES,"1:")); i++; break;}
-
       if (isdigit(c)) {// number
         int start = i;            while (i<sz and isdigit(line[i+1])) i++;
         if (line[i+1]=='.') {i++; while (i<sz and isdigit(line[i+1])) i++;}
@@ -62,12 +57,11 @@ bool Runtime::read(std::string line) {//return true if error
         int start = i;            while (i<sz and isalpha(line[i+1])) i++;
         t.push_back(std::make_tuple(num,start,NAME,line.substr(start,i-start+1))); break;
       }
-
-      // handle remaining 1-char tokens
-      if (syntaxmap.count(c)) {addtoken(c); break;}
-      this->err=UNK; error(); break;
+      if (syntaxmap.count(c)) {addtoken(c); break;} //other 1-char tokens
+      this->err=UNK; error(); break; //how did you even type that?
     }
   }
+
   if (st) {cs += "\n";} //newline in string
   else if (s.empty()) {t.push_back(std::make_tuple(num,i,SEP,""));} //statement separator
   num++;
