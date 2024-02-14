@@ -62,8 +62,8 @@ bool Runtime::read(std::string line) {//return true if error
     }
   }
 
-  if (st) {cs += "\n";} //newline in string
-  else if (s.empty()) {t.push_back(std::make_tuple(num,i,SEP,""));} //statement separator
+  if (st) {cs += "\n";}
+  else {t.push_back(std::make_tuple(num,i,SEP,""));}
   num++;
   return false;
 }
