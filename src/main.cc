@@ -1,6 +1,7 @@
 #define DOCTEST_CONFIG_IMPLEMENT
 #include "doctest.h" //https://github.com/doctest/doctest
-#include "runtime.hpp" //Runtime
+#include "lexer.hpp"
+#include "parser.hpp"
 #include <csignal>
 #include <filesystem>
 #include <fstream>
@@ -58,7 +59,8 @@ int main(int argc, char *argv[]) {
   int res = context.run();
   if (context.shouldExit()) {return res;}
 
-  Runtime rt;
+  Lexer lexer;
+  Parser parser;
 
   // repl (or stdin)
   if (argc == 1) {
@@ -75,10 +77,16 @@ int main(int argc, char *argv[]) {
       }
       if (std::cin.eof()) {break;} // handle Ctrl+D
       // display any errors but don't crash - just reset error each loop
-      if (rt.read(line)) {rt.error(); continue;}
-      if (rt.parse()) {rt.error(); continue;}
-      if (rt.eval()) {rt.error(); continue;}
-      rt.print();
+      lexer.lex(line); if (lexer.error()) continue;
+      parser.parse(lexer.tokens); if (parser.error()) continue;
+      std::cout << "[tokens]:" << std::endl;;
+      for (auto &t : parser.tokens) {
+        std::cout << Parser::TokenRepr[t.type] << "\t" << t.s << std::endl;
+      }
+
+      // lexer.parse();   if (lexer.error()) continue;
+      // lexer.eval();    if (lexer.error()) continue;
+      // lexer.print();
     }
   }
 
@@ -91,12 +99,12 @@ int main(int argc, char *argv[]) {
         std::string line;
         while (std::getline(file, line)) {
           // Crash on error
-          if (rt.read(line)) {rt.error(); return EX_DATAERR;}
-          if (rt.parse()) {rt.error(); return EX_DATAERR;}
-          if (rt.eval()) {rt.error(); return EX_DATAERR;}
-          rt.print();
+          lexer.lex(line); if (lexer.error()) return EX_DATAERR;
+          parser.parse(); if (parser.error()) return EX_DATAERR;
+          // lexer.eval();    if (lexer.error()) return EX_DATAERR;
+          // lexer.print();
         }
-        rt.tokens.push_back({rt.linenum,0,Runtime::END,""});
+        // lexer.tokens.push_back({lexer.linenum,0,Lexer::END,""});
       } else {
         std::cerr << "unable to open file" << std::endl;
         return EX_NOINPUT;
@@ -109,8 +117,8 @@ int main(int argc, char *argv[]) {
 
 // tests
 TEST_CASE("runtime class") {
-  Runtime rt;
-  rt.read(std::string("x:3"));
-  CHECK(rt.tokenstack.empty() == true);
-  CHECK(rt.tokens[0].type == Runtime::NAME);
+  Lexer lexer;
+  lexer.lex(std::string("x:3"));
+  // CHECK(lexer.tokenstack.empty() == true);
+  CHECK(lexer.tokens[0].type == Lexer::NAME);
 }
