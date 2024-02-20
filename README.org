@@ -7,7 +7,30 @@ The K programming language is terse and suited to rapid prototyping and number c
 Commercial implementations are used by quants to make number go up.
 Open source implementations are used by people who like Project Euler, code golf, and puzzle solving.
 Both commercial and free versions of the language tend to attract programmers who appreciate a certain spare and severe kind of elegance.
-Here's an example:
+
+Here's a gentle introduction:
+#+begin_src k
+/line comments begin with a single slash
+a: "h"        /assign (a) the char 'h'
+a: ,"g"       /(a) is mutable, now contains the string "g" thanks to enlist (,)
+a: 5 + 2 3 0  /(a) is now a list of ints (7 8 5), showcasing dynamic typing
+a[2]: 7 8 9   /the list is mutable
+b: -          /we can assign an infix operator to a name...
+2 b 3         /...but we can't call it like an infix operator (this is an error)
+b[2;3]        /we can however use m-expression function call syntax (this returns -1)
+-[2;3]        /this is the same as b:-; b[2;3]
+c: b[10;a]    /c gets (3 2 1)
+f:{x+1}       /f gets an anonymous function that returns its argument incremented by 1
+f[41]         /returns 42
+f:{[a] a+1}   /you can also name the function's arguments (this (a) is local)
+g:{a:3;x+y-a} /(;) separates statements; functions return their last statement
+g[5;1]        /returns 3
+g[5;1 2]      /returns (3 4)
+g[5 6;1 2]    /returns (3 5)
+g[5 6;1 2 3]  /length error! (1 2 3 - 3) worked, but the lengths ((5 6)+(-2 -1 0)) don't match
+#+end_src
+
+Here's a more elaborate example, executed in the ngn/k REPL (note the single space prompt):
 
 #+begin_src k
  *+|'10(|+\)\1 1  /the first 11 numbers of the fibonacci sequence

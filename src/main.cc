@@ -1,6 +1,6 @@
 #define DOCTEST_CONFIG_IMPLEMENT
 #include "doctest.h" //https://github.com/doctest/doctest
-#include "runtime.h" //Runtime
+#include "runtime.hpp" //Runtime
 #include <csignal>
 #include <filesystem>
 #include <fstream>
@@ -35,8 +35,7 @@ inline void install_handler() {
 }
 
 int main(int argc, char *argv[]) {
-
-  // handle --help -h for application before passing remaining args to doctest
+  // handle --help or -h before passing remaining args to doctest. TODO: pass *no* args to doctest?
   for (int i=1; i < argc; i++) {
     auto arg = std::string(argv[i]);
     if (arg == "-h" or arg == "--help") {
@@ -75,7 +74,6 @@ int main(int argc, char *argv[]) {
         continue;
       }
       if (std::cin.eof()) {break;} // handle Ctrl+D
-
       // display any errors but don't crash - just reset error each loop
       if (rt.read(line)) {rt.error(); continue;}
       if (rt.parse()) {rt.error(); continue;}
@@ -98,7 +96,7 @@ int main(int argc, char *argv[]) {
           if (rt.eval()) {rt.error(); return EX_DATAERR;}
           rt.print();
         }
-        rt.tokens.push_back(std::make_tuple(rt.linenum,0,Runtime::END,""));
+        rt.tokens.push_back({rt.linenum,0,Runtime::END,""});
       } else {
         std::cerr << "unable to open file" << std::endl;
         return EX_NOINPUT;
@@ -109,8 +107,10 @@ int main(int argc, char *argv[]) {
   return 0;
 }
 
-// TEST_CASE("runtime class") {
-//   Runtime rt;
-//   rt.read(std::string("hello"));
-//   CHECK(rt.line.size() == 5);
-// }
+// tests
+TEST_CASE("runtime class") {
+  Runtime rt;
+  rt.read(std::string("x:3"));
+  CHECK(rt.tokenstack.empty() == true);
+  CHECK(rt.tokens[0].type == Runtime::NAME);
+}
