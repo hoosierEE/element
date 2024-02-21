@@ -81,7 +81,7 @@ int main(int argc, char *argv[]) {
       parser.parse(lexer.tokens); if (parser.error()) continue;
       std::cout << "[tokens]:" << std::endl;;
       for (auto &t : parser.tokens) {
-        std::cout << Parser::TokenRepr[t.type] << "\t" << t.s << std::endl;
+        std::cout << parser.TokenRepr[t.type] << "\t" << t.s << std::endl;
       }
 
       // lexer.parse();   if (lexer.error()) continue;
@@ -100,7 +100,7 @@ int main(int argc, char *argv[]) {
         while (std::getline(file, line)) {
           // Crash on error
           lexer.lex(line); if (lexer.error()) return EX_DATAERR;
-          parser.parse(); if (parser.error()) return EX_DATAERR;
+          parser.parse(lexer.tokens); if (parser.error()) return EX_DATAERR;
           // lexer.eval();    if (lexer.error()) return EX_DATAERR;
           // lexer.print();
         }

@@ -86,7 +86,7 @@ void Lexer::lex(std::string line) {
 bool Lexer::error(int linenum, int pos) {
   auto m = err;
   if (m=="") return false; //no errors, yay
-  std::cerr << "[SYNTAX (" << m << ") on line " << linenum << "]:" << std::endl;
+  std::cerr << "[SYNTAX ERROR (" << m << ") on line " << linenum << "]:" << std::endl;
   std::cerr << line << std::endl;
   std::cerr << std::string(pos,' ')+"^" << std::endl;
   err = ""; //reset

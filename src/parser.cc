@@ -5,20 +5,22 @@ Parser::Parser() {}
 
 bool Parser::error(int line, int pos) {return true;}
 
-// First we make a "recognizer".
-// Its job is to return true for valid token sequences.
-// Later, we will construct a parse tree.
-void Parser::parse(std::vector<TokenBase::Token> tok) {
+bool Parser::parse(std::vector<Token> tok) {
+  // First we make a "recognizer".
+  // Its job is to return true for valid token sequences.
+  // Later, we will construct a parse tree.
   // Each loop through the REPL calls parse(), but we're never guaranteed to
   // have a "complete" program. So given a stream of tokens we parse what we
   // can, and if it can be evaluated, we signal eval() to do something with
   // whatever we have parsed so far.
   token_i = 0;
-  return parse_stmt() or parse_expr();
+  while (token_i < tok.size())
+    if (not (parse_stmt() or parse_expr()))
+      return false;
+  return true;
 }
 
-
-bool Parser::match(std::initializer_list<TokenBase::Token> ts) {
+bool Parser::match(std::initializer_list<TokenEnum> ts) {
   auto found = std::find(ts.begin(), ts.end(), tokens[token_i].type) == ts.end();
   token_i += found; //advance to next token
   return found;
@@ -28,7 +30,7 @@ bool Parser::match(std::initializer_list<TokenBase::Token> ts) {
 bool Parser::parse_stmt() {
   int p = token_i;
   bool ok = parse_expr() and match({SEMI,LF});
-  if (!ok) token_i = p;
+  if (not ok) token_i = p;
   return ok;
 }
 
