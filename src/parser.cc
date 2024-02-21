@@ -1,41 +1,117 @@
 #include "parser.hpp"
-
 Parser::Parser() {}
 
+bool Parser::error(int line, int pos) {return true;} // TODO
 
-bool Parser::error(int line, int pos) {return true;}
-
-bool Parser::parse(std::vector<Token> tok) {
-  // First we make a "recognizer".
-  // Its job is to return true for valid token sequences.
-  // Later, we will construct a parse tree.
-  // Each loop through the REPL calls parse(), but we're never guaranteed to
-  // have a "complete" program. So given a stream of tokens we parse what we
-  // can, and if it can be evaluated, we signal eval() to do something with
-  // whatever we have parsed so far.
+bool Parser::parse(std::vector<Token> ts) {
+  this->tokens = ts;
   token_i = 0;
-  while (token_i < tok.size())
-    if (not (parse_stmt() or parse_expr()))
-      return false;
-  return true;
+  return parse_exprs();
+}
+
+bool Parser::eat(TokenEnum t) {
+  bool ok = token_i < tokens.size() and t == tokens[token_i].type;
+  token_i += ok;
+  return ok;
 }
 
 bool Parser::match(std::initializer_list<TokenEnum> ts) {
-  auto found = std::find(ts.begin(), ts.end(), tokens[token_i].type) == ts.end();
-  token_i += found; //advance to next token
-  return found;
+  bool ok = token_i < tokens.size() and std::find(ts.begin(),ts.end(),tokens[token_i].type) == ts.end();
+  token_i += ok;
+  return ok;
 }
 
-// expr [;\n]
-bool Parser::parse_stmt() {
-  int p = token_i;
-  bool ok = parse_expr() and match({SEMI,LF});
+bool Parser::parse_exprs() {
+  return parse_expr() and parse_expr_tails();
+}
+
+bool Parser::parse_expr_tails() {
+  while (true) {
+    auto p = token_i;
+    auto ok = match({SEMI,LF}) and parse_expr();
+    if (not ok) {token_i = p; break;}
+  }
+  return true;
+}
+
+bool Parser::parse_expr() {return parse_nve() or parse_te() or true;}
+
+bool Parser::parse_nve() {
+  auto p = token_i;
+  auto ok = parse_noun() and parse_verb() and parse_expr();
   if (not ok) token_i = p;
   return ok;
 }
 
-bool Parser::parse_expr() {
-  return false;
+bool Parser::parse_te() {
+  auto p = token_i;
+  auto ok = parse_term() and parse_expr();
+  if (not ok) token_i = p;
+  return ok;
+}
+
+bool Parser::parse_term() {
+  auto p = token_i;
+  auto ok = parse_noun() or parse_verb();
+  if (not ok) token_i = p;
+  return ok;
+}
+
+bool Parser::parse_noun() {
+  // noun   ::=  term "[" Exprs "]" | "(" Exprs ")" | "{" Exprs "}" | Noun
+  auto p = token_i;
+  auto ok = parse_term() and eat(LS) and parse_exprs() and eat(RS);
+  if (not ok) token_i = p;
+  ok = eat(LP) and parse_exprs() and eat(RP);
+  if (not ok) token_i = p;
+  ok = eat(LC) and parse_exprs() and eat(RC);
+  if (not ok) token_i = p;
+  ok = parse_Noun();
+  if (not ok) token_i = p;
+  return ok;
+}
+
+bool Parser::parse_Noun() {
+  // Noun   ::=  Names | Ints | Floats | String | Symbols
+  auto p = token_i;
+  auto ok = parse_names() or parse_ints() or parse_floats() or parse_strings() or parse_symbols();
+  if (not ok) token_i = p;
+  return ok;
+}
+
+bool Parser::parse_names() {
+  // Names  ::=  Name ("." Name)*
+  // Name   ::=  [A-Za-z][A-Za-z0-9]*
+  auto p = token_i;
+  auto ok = eat(NAME) and parse_name_tails();
+  if (not ok) token_i = p;
+  return ok;
+}
+
+bool Parser::parse_name_tails() {
+  while (true) {
+    auto p = token_i;
+    auto ok = eat(DOT) and eat(NAME);
+    if (not ok) {token_i = p; break;}
+  }
+  return true;
+}
+
+bool Parser::parse_verb() {
+  // Verb   ::=  Verb1 ":"? | "0:" | "1:"
+  // Verb1  ::=  [-:+*%!&|<>=~,^#_$?@.]
+  auto p = token_i;
+  auto ok = match(
+    {DASH,COLON,PLUS,STAR,PERCENT,BANG,AMP,VERT,LESS,MORE,
+     EQUAL,TILDE,COMMA,CARET,HASH,UNDERBAR,DOLLAR,HUH,AT,DOT});
+  if (ok) {
+    int p1 = p;
+    if (not match({COLON})) token_i = p1;
+  } else {
+    ok = match({LINES,BYTES});
+  }
+  if (not ok) token_i = p;
+  return ok;
 }
 
 // bool Parser::eval(){
@@ -47,44 +123,24 @@ bool Parser::parse_expr() {
 
 // The "essence" of K's grammar:  E:E;e|e e:nve|te| t:n|v v:tA|V n:t[E]|(E)|{E}|N
 // brief explanation: https://discord.com/channels/821509511977762827/821511172305846322/1107809632073826374
-// There are 5 production rules:
-// 1. E:E;e|e
-// 2. e:nve|te|ε
-// 3. t:n|v
-// 4. v:tA|V
-// 5. n:t[E]|(E)|{E}|N
-// Grammar is defined as
-// <nonterminal>:<production>
-// | alternates (ε means empty)
-// (N)oun non-terminal such as 42 1.9 "xyz" {1+2*x}
-// (V)erb primitive such as + or 1:
-// (A)dverb ' / \ ': /: \:
-// non-terminals:
-// (n)oun (v)erb (t)erm
-// (e)xpression, singular.
-// (E)xpressions, plural. multiple (e) delimited by semicolons
-
-// adapted from https://k.miraheze.org/wiki/Grammar
-// Exprs  ::=  (Exprs ";" expr | expr)
-// expr   ::=  (noun verb expr | term expr | ε)
-// term   ::=  (noun | verb)
-// verb   ::=  (term Adverb | Verb)
-// noun   ::=  (term "[" Exprs "]" | "(" Exprs ")" | "{" Exprs "}" | Noun)
+// Below is adapted from https://k.miraheze.org/wiki/Grammar
+// Exprs  ::=  expr (";" expr)*
+// expr   ::=  noun verb expr | term expr | ε
+// term   ::=  noun | verb
+// verb   ::=  term Adverb | Verb
+// noun   ::=  term "[" Exprs "]" | "(" Exprs ")" | "{" Exprs "}" | Noun
 // Adverb ::=  ['\/] ":"?
-// Verb   ::=  (Verb1 ":"? | "0:" | "1:")
+// Verb   ::=  Verb1 ":"? | "0:" | "1:"
 // Verb1  ::=  [-:+*%!&|<>=~,^#_$?@.]
-// Noun   ::=  (Names | Ints | Floats | String | Symbols)
-// Names  ::=  (Names.Name | Name)
-// Name   ::=  (Letter | Name Letter | Name Digits)
-// Floats ::=  (Float | Floats " " Float)
-// Ints   ::=  (Int | Ints " " Int)
-// Int    ::=  ("-" Digits | Digits)
+// Noun   ::=  Names | Ints | Floats | String | Symbols
+// Names  ::=  Name ("." Name)*
+// Name   ::=  [A-Za-z][A-Za-z0-9]*
+// Floats ::=  Float (" " Float)*
+// Ints   ::=  Int (" " Int)*
+// Int    ::=  "-"? Digits
 // Float  ::=  Int "." Digits
-// Strings::=  (String | Strings " " String)
-// String ::=  '"' Chars '"'
-// Chars  ::=  (Chars Char | ε)
-// Char   ::=  ("\0" | "\t" | "\n" | "\r" | '\"' | "\\" | any)
+// Strings::=  String (" " String)*
+// String ::=  '"' (Char)* '"'
+// Char   ::=  "\0" | "\t" | "\n" | "\r" | '\"' | "\\" | any
 // Symbols::=  ("`" | "`" Name | "`" String)+
 // Digits ::=  [0-9]+
-// Letter ::=  [A-Za-z]
-
