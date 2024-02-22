@@ -7,21 +7,14 @@
 class Parser : public TokenBase { //inherits TokenEnum,TokenRepr,Token
   std::string err;
   unsigned token_i;
-  bool parse_stmt();
-  bool parse_expr();
-  bool parse_nve();
-  bool parse_te();
-  bool parse_term();
-  bool parse_verb();
-  bool parse_adverb();
-  bool parse_noun();
-  bool parse_Noun();
-  bool parse_names();
-  bool parse_name_tails();
-  bool parse_floats();
-  bool parse_ints();
-  bool parse_strings();
-  bool parse_symbols();
+  bool exprs();   bool expr(); bool expr_s();
+  bool nve();     bool te();   bool term();
+  bool noun();    bool Noun();
+  bool floats();  bool ints();
+  bool names();   bool name_s();
+  bool verb();    bool Verb(); bool Adverb();
+  bool strings(); bool symbols();
+  bool eat(TokenEnum);
   bool match(std::initializer_list<TokenEnum>);
 public:
   Parser();
