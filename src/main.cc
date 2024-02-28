@@ -119,6 +119,12 @@ int main(int argc, char *argv[]) {
 TEST_CASE("runtime class") {
   Lexer lexer;
   lexer.lex(std::string("x:3"));
-  // CHECK(lexer.tokenstack.empty() == true);
+  // for (auto &t: lexer.tokens)
+  //   std::cout << t.s <<" "<< lexer.TokenRepr[t.type] << std::endl;
+  CHECK(lexer.tokens.size() == 4);
+  CHECK(lexer.error() == false);
+  Parser parser;
+  parser.parse(lexer.tokens);
+  // CHECK(parser.token_i == 4);
   CHECK(lexer.tokens[0].type == Lexer::NAME);
 }

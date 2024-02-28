@@ -4,7 +4,7 @@ CC = g++
 W = -Werror -Wall
 # retain color when piping output to less/more:
 # CPU=1 make clean test 2>&1 | less -R
-CFLAGS = -c -fdiagnostics-color
+CFLAGS = -c -fdiagnostics-color -g
 OFLAGS = -o
 else
 CC = nvcc

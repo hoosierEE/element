@@ -6,7 +6,6 @@
 #include <stack>
 class Parser : public TokenBase { //inherits TokenEnum,TokenRepr,Token
   std::string err;
-  unsigned token_i;
   bool exprs();   bool expr(); bool expr_s();
   bool nve();     bool te();   bool term();
   bool noun();    bool Noun();
@@ -17,6 +16,7 @@ class Parser : public TokenBase { //inherits TokenEnum,TokenRepr,Token
   bool eat(TokenEnum);
   bool match(std::initializer_list<TokenEnum>);
 public:
+  unsigned token_i;
   Parser();
   std::vector<Token> tokens;
   bool parse(std::vector<Token>);
