@@ -53,7 +53,7 @@ Element diverges from "typical K":
 - string data type (distinct from "list of char")
 - =x::y= declare mutable, change =mut::1; mut::2 /okay=
 - =x:y= declare immutable =imm:1; imm::2 /error=
-- =>s= open ~fd:>`"/path/to/file.txt"~
+- =>s= open @@html:<code>fd:&gt;`"/path/to/file.txt"</code>@@
 - =<s= close =<fd=
 
 * Install
