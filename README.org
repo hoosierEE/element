@@ -54,10 +54,7 @@ Element diverges from "typical K":
 - =x::y= declare mutable, change =mut::1; mut::2 /okay=
 - =x:y= declare immutable =imm:1; imm::2 /error=
 - =>s= open
-  #+begin_src k
-  fd:>`"/path/to/file.txt"
-  #+end_src
-- =<s= close =<fd=
+- =<s= close
 
 * Install
 Compile for GPU with NVIDIA's =nvcc= compiler:
