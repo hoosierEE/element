@@ -1,8 +1,13 @@
 * Element
-A dialect of K that transparently computes using either CPU or GPU based on the data it gets at run-time.
-At least, that's the plan.
+What: a dialect of K using CPU or GPU based on run-time data.
 
-** K crash course
+Why: fun?
+
+How: CUDA/C++
+
+Dream: fast kernel DSL language embedded in a distributed system.
+
+** k crash course
 The K programming language is terse and suited to rapid prototyping and number crunching.
 Commercial implementations are used by quants to make number go up.
 Open source implementations are used by people who like Project Euler, code golf, and puzzle solving.
@@ -36,14 +41,14 @@ Here's a more elaborate example, executed in the ngn/k REPL (note the single spa
  *+|'10(|+\)\1 1  /the first 11 numbers of the fibonacci sequence
 1 1 2 3 5 8 13 21 34 55 89
  f:{*+|'x(|+\)\1 1} /a function to generate the first x+1 numbers of fibonacci
- f'2 8 9  /apply f to each element in the list (2 8 9), producing a new list
+ f'2 8 9  /apply f to each item in the list (2 8 9), producing a new list
 (1 1 2
  1 1 2 3 5 8 13 21 34
  1 1 2 3 5 8 13 21 34 55)
 #+end_src
 
-** Typical K features
-Implementations vary, but most Ks have:
+** typical K features
+Most Ks have:
 - an interpreter
 - dynamic typing
 - eager evaluation
@@ -60,47 +65,40 @@ Implementations vary, but most Ks have:
 - right-to-left evaluation and no operator precedence: =2*3+4= is =2*(3+4)=
 - partial application or "projections" instead of closures: ={x+y+z}[1;;3]= is ={1+x+3}=
 
-** Features particular to this dialect
-This variation of K aims for feature parity with the above "typical" K, except:
+** Element quirks
+How Element diverges from "typical K":
 - implicit hardware acceleration by default
   + small data processed on one CPU
   + larger or large and irregular data processed on multiple CPUs
   + really large and regular data processed on GPU
-- incrementally compiled line-by-line, so still "feels" interpreted
-- lexical scoping
+- lexical scope
 - closures
-- no =\cd= or sending commands to =/bin/sh=
+- =\cd=, =\d=, =\l file.k= etc. provided by REPL, not runtime
 - string data type (distinct from "list of char")
-- new syntax
-  - =:= creates a new variable
-  - =::= redefines an existing variable
+- =x::y= declare mutable, change =mut::1; mut::2 /okay=
+- =x:y= declare immutable =imm:1; imm::2 /error=
+- =>s= open =fd:>`"/path/to/file.txt"=
+- =<s= close =<fd=
 
 * Install
-To build this, download the repo then compile from source using NVIDIA's =nvcc= compiler:
-#+begin_src sh
-$ cd element
-$ nvcc --Werror all-warnings -o element src/runtime.cc src/main.cc
-$ ./element
+Compile for GPU with NVIDIA's =nvcc= compiler:
+#+begin_src bash
+cd element/src && make
+./element
+#+end_src
+
+Or for CPU with =g++=:
+#+begin_src bash
+CPU=1 cd element && make
+./element
 #+end_src
 
 * Development
+This project is in the *experimental*, pre-alpha stage.
+Some [[https://github.com/doctest/doctest/tree/master/doc/markdown#reference][doctest]] tests exist, but no coverage goals yet.
 
-This project is in the experimental phase, and aims to fulfill my goals at the same time:
-
-1. to get more comfortable with modern C++
-2. to deeply understand hardware acceleration
-3. to create a minor variation of an existing programming language
-
-I will generally follow the approach of [[https://craftinginterpreters.com/][Crafting Interpreters]], but with a few key changes:
-
-1. different target language
-2. different implementation language (C++)
-3. hardware acceleration
-
-Why the name "element"?
+Why the name "Element"?
 - chemistry puns: K is potassium, CUDA (Cu) is copper
 - vector languages deal with "elements of a vector" frequently
 - naming is hard
 
-** Testing
-Currently using [[https://github.com/doctest/doctest/tree/master/doc/markdown#reference][doctest]].

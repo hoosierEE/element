@@ -1,0 +1,106 @@
+#+title: Syntax
+
+This document describes the syntax of Element.
+Element is /almost/ K, particularly the flavor of K embodied by the open-source [[https://codeberg.org/ngn/k][ngn/k]].
+
+* tokenizing element code
+This section describes the tokens used by the element interpreter.
+
+** Comments
+"/" (slash) is used for comments.
+
+A line containing only "/" begins a multi-line comment which ends with a line containing only "\".
+Multi-line comments do not nest.
+Elsewhere, " /" (that is space-slash) starts a comment that continues until the end of  a line.
+
+#+begin_src k
+2+3 / this is a comment after some code
+
+/
+This is one
+/
+single, large,
+/
+multi-line
+/
+comment.
+It ends on the
+next line:
+\
+#+end_src
+
+** Verbs
+What other languages call "operators", array languages call "verbs".
+While conventional languages overload =-= to mean two things:
+
+- =-x= negates x
+- =x-y= subtracts y from x
+
+Array languages in general, and especially K, overload like crazy.
+Each of =~!@#$%^&*_+`-=|\,.<>/?:'= have at minimum two meanings.
+That is, each symbol =f= can be used in two ways:
+
+- =f x= unary/prefix/monadic
+- =x f y= binary/infix/dyadic
+
+There are additional overloads for some of these based on the types of the arguments.
+
+** Adverbs
+Conventional languages don't have a word for these, although "higher order function" is a good phrase to describe adverbs.
+An adverb is a symbol that modifies the behavior of a verb.
+The adverbs in ngn/k are:
+
+- "/" reduce/fold/insert
+- "\" scan
+- "'" map/each
+- "':" eachpair
+- "/:" eachright
+- "\:" eachleft
+
+Experienced programmers may already know =map= and =reduce=.
+Map applies a 1-argument function to each element in a collection independently, resulting in a transformed collection.
+
+#+begin_src
+f'1 2 3 4  is  map[f;[1;2;3;4]]  is  [f[1];f[2];f[3];f[4]]
+#+end_src
+
+Reduce applies a 2-argument function to the first two elements in a collection to make an intermediate result, then uses that result as one of the two arguments to the function, and the next element as the second argument, and produces a new result until it runs out of elements.
+It's common in other languages for =reduce= to take a default argument to use as the first parameter in the first call to the function, but in array languages it is more common to use the first element of the array argument as this default value.
+
+#+begin_src
+F/1 2 3 4  is  reduce[F;[1;2;3;4]]  is  F[F[F[1;2];3];4]
+#+end_src
+
+Scan is like reduce, but it collects the intermediate results.
+
+#+begin_src
+F\1 2 3 4  is  scan[F;[1;2;3;4]]  is  [1;F[1;2];F[F[1;2];3];F[F[F[1;2];3];4]]
+#+end_src
+
+Another way of thinking of reduce is as if it inserts the function between the elements of its argument:
+
+#+begin_src
+1 f 2 f 3 f 4
+#+end_src
+
+And likewise with scan:
+
+#+begin_src
+[1 ; 1 f 2 ; 1 f 2 f 3 ; 1 f 2 f 3 f 4]
+#+end_src
+
+It's also worth pointing out that the result of scan is exactly the result of reduce.
+Scan is more "fundamental" than reduce in the sense that it's easier to implement reduce in terms of scan than the other way around.
+Too bad scan is not more widely known, because it's awesome.
+
+#+begin_src k
+f: {x+1}        /+1 to first (only) argument
+f'1 2 99 4      /map f to each value: 2 3 100 5
+g:{y+1}         /discard first argument, +1 to second argument
+g\1 2 99 4      /first element not like map: 1 3 100 5
+1 g\1 2 99 4    /"seeded scan" with default value for first iteration
+map:{(*y)x\y}   /arguments can be functions
+map[f;1 2 99 4] /
+reduce:{*|x\y}
+reduce[+;1 2 99 4] /106
+#+end_src

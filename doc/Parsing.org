@@ -1,0 +1,71 @@
+#+title: Parsing
+
+According to [[https://github.com/jrop/pratt-calculator][here]]:
+
+#+begin_quote
+...the Pratt Parser solves the following problem: given the string "1 + 2 * 3", does the "2" associate with the "+" or the "*". It also solves "-" being both a prefix and infix operator, as well as elegantly handling right associativity.
+#+end_quote
+
+Parsing K has some issues that make it more complex than parsing purely infix and prefix operators in an expression.
+Take for example the each adverb (='=), with its 3 modes of usage:
+
+#+begin_src k
+   f' each1     #'("abc";3 4 5 6) -> 3 4
+ x F' each2     2 3#'"ab" -> ("aa";"bbb")
+   X' binsearch 1 3 5 7 9'8 9 0 -> 3 4 -1
+#+end_src
+
+The first applies monadic =f= to each argument.
+The second applies dyadic =F= to each tuple of corresponding left and right args.
+The third is actually a /verb/ form of ='=.
+
+So how should ='= be parsed?
+
+In the semantics of K, expressions evaluate from right to left.
+For example, when you type =x q'1 + 2 3 4=, the result of =1 + 2 3 4= is the right argument to ='=.
+An approximation of the above in Python3:
+
+#+begin_src python
+map(q, zip(x, (1+a for a in [2,3,4])))
+#+end_src
+
+This interpretation presumes =x= is a left argument to ='=, which means ~q~ is dyadic.
+However, another interpretation is possible:
+
+#+begin_src python
+x(map(q, (1+a for a in [2,3,4])))
+#+end_src
+
+If we instead assume =x= is a function, which then means ~q~ must be monadic.
+To put it more concretely:
+
+#+begin_src k
+a: 3 5
+a #'("ab";"cde")  /
+b: {>x}           /b is a monadic verb (prefix function)
+b #'("ab";"cde")  /(1 0) like >(#"ab";#"cde")
+#+end_src
+
+
+#+begin_src k
+   F/ fold      +/1 2 3 -> 6
+   F\ scan      +\1 2 3 -> 1 3 6
+ x F/ seeded /  10+/1 2 3 -> 16
+ x F\ seeded \  10+\1 2 3 -> 11 13 16
+ i f/ n-do      5(2*)/1 -> 32
+ i f\ n-dos     5(2*)\1 -> 1 2 4 8 16 32
+ f f/ while     (1<){:[2!x;1+3*x;-2!x]}/3 -> 1
+ f f\ whiles    (1<){:[2!x;1+3*x;-2!x]}\3 -> 3 10 5 16 8 4 2 1
+   f/ converge  {1+1.0%x}/1 -> 1.618033988749895
+   f\ converges (-2!)\100 -> 100 50 25 12 6 3 1 0
+   C/ join      "ra"/("ab";"cadab";"") -> "abracadabra"
+   C\ split     "ra"\"abracadabra" -> ("ab";"cadab";"")
+   I/ decode    24 60 60/1 2 3 -> 3723   2/1 1 0 1 -> 13
+   I\ encode    24 60 60\3723 -> 1 2 3   2\13 -> 1 1 0 1
+  i': window    3':"abcdef" -> ("abc";"bcd";"cde";"def")
+i f': stencil   3{x,"."}':"abcde" -> ("abc.";"bcd.";"cde.")
+  F': eachprior -':12 13 11 17 14 -> 12 1 -2 6 -3
+x F': seeded ': 10-':12 13 11 17 14 -> 2 1 -2 6 -3
+x F/: eachright 1 2*/:3 4 -> (3 6;4 8)
+x F\: eachleft  1 2*\:3 4 -> (3 4;6 8)
+#+end_src

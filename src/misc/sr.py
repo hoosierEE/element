@@ -1,17 +1,17 @@
-# shift-reduce parser experiment in python
+# shift-reduce parser experiment in python, based on here:
+# https://www.geeksforgeeks.org/shift-reduce-parser-compiler/
 rules = {
  "S": ("(L)","a"),
  "L": ("L,S","S"),
 }
 rrule = {ki:k for k,v in rules.items() for ki in v}
-
 def test(seq):
- p('---',seq,'---')
+ print('---',seq,'---')
  stk = []
  for t in seq:
   if t in ",a()":
    stk.append(t)
-   p(' : '+''.join(stk))
+   print(' : '+''.join(stk))
 
   while True:
    s = ''.join(stk)
@@ -20,17 +20,13 @@ def test(seq):
      stk = stk[:-len(r)]
      stk.append(rrule[r])
      break
-   p('r: '+s)
+   print('r: '+s)
    if s == ''.join(stk):
     break
 
  ok = len(stk) == 1 and stk[0] in rules
- p('pass' if ok else 'fail')
+ print('pass' if ok else 'fail')
  return ok
-
-def p(*args,**kwargs):
- ...
- # print(*args,**kwargs)
 
 assert test('(a,(a,a))')
 assert test('a')
