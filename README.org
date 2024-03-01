@@ -51,10 +51,10 @@ Element diverges from "typical K":
 - closures
 - =\cd=, =\d=, =\l file.k= etc. provided by REPL, not runtime
 - string data type (distinct from "list of char")
-- =x::y= declare mutable, change =mut::1; mut::2 /okay=
-- =x:y= declare immutable =imm:1; imm::2 /error=
-- =>s= open @@html:<code>fd:&gt;`"/path/to/file.txt"</code>@@
-- =<s= close =<fd=
+- =x::y= declare mutable, change *mut::1; mut::2 /okay*
+- =x:y= declare immutable *imm:1; imm::2 /error*
+- =>s= open *fd:>`"/path/to/file.txt"*
+- =<s= close *<fd*
 
 * Install
 Compile for GPU with NVIDIA's =nvcc= compiler:
