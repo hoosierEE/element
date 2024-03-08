@@ -6,6 +6,22 @@ According to [[https://github.com/jrop/pratt-calculator][here]]:
 ...the Pratt Parser solves the following problem: given the string "1 + 2 * 3", does the "2" associate with the "+" or the "*". It also solves "-" being both a prefix and infix operator, as well as elegantly handling right associativity.
 #+end_quote
 
+In K, all verbs (operators) have both prefix and infix forms:
+
+#+begin_src
+verb noun /prefix
+noun verb noun /infix
+#+end_src
+
+For example, the symbol =*= means either multiply (=a*b=) or first (=*x=).
+K also has adverbs (higher order functions) that always take the form
+
+#+begin_src
+term adverb
+#+end_src
+
+Where =term= is either a verb or a noun.
+
 Parsing K has some issues that make it more complex than parsing purely infix and prefix operators in an expression.
 Take for example the each adverb (='=), with its 3 modes of usage:
 

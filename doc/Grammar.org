@@ -1,0 +1,26 @@
+#+title: Grammar
+Element's grammar is heavily inspired by the formal K grammar [[https://k.miraheze.org/wiki/Grammar][here]].
+
+#+begin_src
+stmt    ::= expr [ ";" expr ]*
+expr    ::= ( noun verb | term )*
+term    ::= noun | verb
+verb    ::= term Adverb | Verb
+noun    ::= term "[" stmt "]" | "(" stmt ")" | "{" stmt "}" | Noun
+
+Adverb  ::= ( "'" | "/" | "\" ) ":"?
+Verb    ::= [-:+*%!&|<>=~,^#_$?@.] ":"? | "0:" | "1:"
+Noun    ::= Names | Ints | Floats | Strings | Symbols
+Names   ::= Name [ "." Name ]*
+Name    ::= [a-zA-Z][a-zA-Z0-9]*
+Ints    ::= Int [" " Int]*
+Digits  ::= [0-9]+
+Int     ::= "-"? Digits
+Floats  ::= Float [ " " Float ]*
+Float   ::= Int | Int "." Digits | Int "." Digits "e" Int
+Strings ::= String [ " " String ]*
+String  ::= '"' Chars '"' | "0x" (Hex Hex)+
+Chars   ::= "\"[0tnr"\] | any
+Hex     ::= [0-9a-f]
+Symbols ::= ( "`" | "`" Name | "`" String )+
+#+end_src
