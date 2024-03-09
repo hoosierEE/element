@@ -35,75 +35,104 @@ class Scanner:
 
 
 bop = { #{token : (bp, arity, name)}
- '+': (10,2,'plus'),
- '-': (10,2,'minus'),
- '*': (20,2,'times'),
- '/': (20,2,'divide'),
- '^': (30,2,'power'),
- '=': (40,2,'equal'),
- '[': ( 0,2,'['),
- ']': (50,2,']'),
+ '+': (20,2,'add'),
+ '-': (20,2,'sub'),
+ '*': (30,2,'mul'),
+ '/': (30,2,'div'),
+ '^': (40,2,'pow'),
+ '=': (50,2,'equal'),
+ '[': (91,2,'fun'), # funcall (arity=2): (f: function name, [..]: argument list)
+ ']': (90,0,'end_group'),
 }
 uop = {
- '-': (10,1,'negate'),
- '*': (10,1,'first'),
- '=': (10,1,'group'),
+ '-': (20,1,'negate'),
+ '*': (20,1,'first'),
+ '=': (20,1,'group'),
+ '[': (92,0,'begin_group'), # start group
+ ']': (90,0,'empty_arglist'), # emtpy argument list
+}
+fns = {
+ 'inc':  (10, 1, 'inc/1'), # def inc(x): return add2(x,1)
+ 'add2': (10, 2, 'add/2'), # def add2(x,y): return x+y
+ 'sub2': (10, 2, 'sub/2'), # def sub2(x,y): return x-y
+ 'add3': (10, 3, 'add/3'), # def add3(x,y,z): return x+y+z
 }
 
-def bp(state:str,op:str) -> (int,str):
- return {'binary':bop, 'unary':uop}[state].get(op,(0,'unknown operator'))
 
-##               -      *     =     +    -     *     /      ^     =     [ ] f[]
-Op = Enum('Ops','negate first group plus minus times divide power equal l r fun')
 class Parser:
  def __init__(s,tokens):
-  s.state = 'unary'
+  s.state = 'unary' # current state
+  s.o = [] # operator stack [(bp,arity,description)]
+  s.d = [] # Ast
   s.s = tokens
-  s.o = [] # operators
-  s.d = [] # data/operands
-  s.i = 0
+  s.i = 0 # current token pointer
   s.z = len(tokens)
- def __repr__(s): return ' '.join(s.s[:s.i]) + '¦' + ' '.join(s.s[s.i:])
- def peek(s): return s.next(0)
+ def __repr__(s):
+  return ' '.join(s.s[:s.i])+'¦'+' '.join(s.s[s.i:])
+ def top(s): return s.o[-1] if s.o else None
+ def done(s): s.state = 'done'
+ def err(s): s.state = 'error'
  def end(s): return s.i >= s.z
- def next(s,inc=1):
-  if s.end():
-   return None
-  x = s.s[s.i]
-  s.i += inc
-  return x
+ def next(s,inc=1) -> str|None:
+  if s.i<s.z:
+   x = s.s[s.i]
+   s.i += inc
+   return x
 
- def reduce(s,op,*until):
-  '''
-  Make AST for expr on stacks while bp(s.o.top()) > bp.
-  Ast(s.o.top(), nargs())
-  Pop operator from s.o (and as many operands as it needs from s.d) and build Ast
-  '''
-  top = s.o[-1] # top of operator stack
+ def reduce(s,lbp):
+  while s.o and lbp <= s.o[-1][0]:
+   _,arity,desc = s.o.pop()
+   if len(s.d) < arity: return s.err()
+   operands = [s.d.pop() for _ in range(arity)]
+   s.d.append(Ast(desc,*operands))
+
+ def reduce_until(s,*matches):
+  while s.o and s.top() not in matches:
+   print('reduce_until')
+   step(s)
+   _,arity,desc = s.o.pop()
+   operands = [s.d.pop() for _ in range(arity)]
+   s.d.append(Ast(desc,*operands))
+
+  s.err()
 
  def unary(s):
-  op = s.peek()
-  match op:
-   case '[': s.o.append('[')
-   case '-'|'='|'*': s.o.append(op)
-   case _:
-    s.d.append(Ast(uop[op]))
-    s.state = 'binary'
+  if (op := s.next()).isalnum():
+   s.d.append(Ast(op))
+   s.state = 'binary'
+  elif op in uop: s.o.append(uop[op])
+  elif op is None: s.done()
+  else: s.err()
 
  def binary(s):
-  op = s.peek()
-  match op:
-   case '[':
-    s.reduce(op)
-    s.o.append(op,'fun')
-   case '+'|'-'|'*'|'/'|'^'|'=':
-    s.reduce(op)
-    s.state = 'unary'
-   case ']':
-    s.reduce(op,'[','fun') # reduce until matching grouping paren or function call operand
-    if s.o[-1] == 'fun':
-     args = s.d[]
-     s.d.append(Ast(op, ))
+  if (op := s.next()) == '[': # function call
+   s.reduce(bop[op][0])
+   s.o.append(bop[op])
+   s.state = 'unary'
+  elif op == ']': # could be funcall or close paren
+   s.reduce_until(bop['['],uop['['])
+   _,arity,desc = s.top()
+   if desc == 'fun':
+    s.o.pop()
+    fname,*args = [s.d.pop() for _ in range(arity)][::-1]
+    s.d.append(Ast(fname,*args))
+  elif op in bop:
+   s.reduce(bop[op][0])
+   s.o.append(bop[op])
+   s.state = 'unary'
+  elif op is None:
+   s.done()
+  else:
+   s.err()
+
+ def parse(s):
+  while True:
+   step(s)
+   if s.state == 'unary': s.unary()
+   elif s.state == 'binary': s.binary()
+   else: break
+  s.reduce(0) # finish up
+  return {'state':s.state, 'ast':s.d}
 
 
 class Ast:
@@ -114,6 +143,10 @@ class Ast:
  def __repr__(s):
   if not s.children: return f'{s.node}'
   return f'({s.node} {" ".join(map(repr,s.children))})'
+
+
+def step(p):
+ print(f'[{" ".join(x[2] for x in p.o)}]  --  {p.d}  --  "{"fin" if p.end() else p.s[p.i]}" ({p.state})')
 
 
 def test():
@@ -141,3 +174,52 @@ def test():
 
 if __name__ == "__main__":
  test()
+
+# bp    arity  operator
+# 36    0      PrecedenceGroupingParenthesis  (
+# 32    2      FunctionCall  (
+# 36    0      EmptyArgumentList  )
+# 36    0      CloseParenOrArgList  )
+# 32    2      Selection .
+# 31    1      PrefixIncrement  ++
+# 31    1      PrefixDecrement  --
+# 31    1      FixPoint  +
+# 31    1      Negation  -
+# 31    1      LogicalNot  !
+# 31    1      BitwiseComplement  ~
+# 31    1      Indirection  *
+# 31    1      AddressOf  &
+# 26    2      Multiplication  *
+# 26    2      Division  /
+# 26    2      Modulo  %
+# 24    2      Addition  +
+# 24    2      Subtraction  -
+# 22    2      BitwiseLeftShift  <<
+# 22    2      BitwiseRightShift  >>
+# 20    2      Order <=>
+# 18    2      LessThan  <
+# 18    2      LessOrEqual <=
+# 18    2      GreaterThan  >
+# 18    2      GreaterOrEqual  >=
+# 16    2      EqualEqual  ==
+# 16    2      NotEqual  !=
+# 14    2      BitwiseAnd  &
+# 12    2      BitwiseXor  ^
+# 10    2      BitwiseOr  |
+# 8     2      ShortCircutAnd  &&
+# 6     2      ShortCircutOr  ||
+# 5     0      TernaryTest  ?
+# 5     3      TernaryChoice  :
+# 3     2      Assignment  =
+# 3     2      AssignmentMultiplication  *=
+# 3     2      AssignmentDivision  /=
+# 3     2      AssignmentModulo  %=
+# 3     2      AssignmentAddition  +=
+# 3     2      AssignmentSubtraction  -=
+# 3     2      AssignmentBitwiseAnd  &=
+# 3     2      AssignmentBitwiseXor  ^=
+# 3     2      AssignmentBitwiseOr  |=
+# 3     2      AssignmentBitwiseLeftShift  <<=
+# 3     2      AssignmentBitwiseRightShift  >>=
+# 0     2      ExpressionSeparator  ,
+# 0     2      ArgumentSeparator  ,
