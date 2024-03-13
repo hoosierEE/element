@@ -2,8 +2,8 @@
 # recursive descent parsing for statements, blocks, and expressions
 from Scanner import Scanner
 
-# debug = print
-def debug(*args,**kwargs): pass
+debug = print
+# def debug(*args,**kwargs): pass
 
 bop = { #{token : (bp, arity, name)}
  '+': (30,2,'add'),
@@ -13,6 +13,7 @@ bop = { #{token : (bp, arity, name)}
  '^': (30,2,'pow'),
  '=': (30,2,'equal'),
  '[': (98,2,'fun'), # funcall (arity=2): (f: function name, [..]: argument list)
+ ']': (99,0,'arglist'),
  ')': (99,0,'cparen'),
  ';': (90,2,'semi'),
 }
@@ -46,7 +47,8 @@ class Parser:
  def __repr__(s): # return ' '.join(s.s[:s.i])+'¦'+' '.join(s.s[s.i:])
   o = ' '.join(x[2] for x in s.o)
   d = ' '.join(map(repr,s.d))
-  return f'{s.s[s.i] if s.i<s.z else " "} • {o:<20} • {d:>20} «{s.state}»'
+  t = f'«{s.state}»'
+  return f'{s.s[s.i] if s.i<s.z else " ":<5} • {o:<20} • {d:<20} {t}'
  def top(s): return s.o[-1] if s.o else None
  def setstate(s,newstate,msg=''):
   if msg: debug(msg)
@@ -58,7 +60,7 @@ class Parser:
 
  def reduce_until(s,*matches):
   while s.top() not in matches:
-   debug(s)
+   debug('(until)',s)
    if not s.o:
     return s.setstate('error')
    op,arity,name = s.o.pop()
@@ -67,11 +69,16 @@ class Parser:
 
  def reduce(s,bp):
   while s.o:
+   debug(s)
    p,arity,name = s.top()
    if p >= bp:
     break
+   # FIXME: fun should pop argument name and argument list
+   # Currently, we put the argument name on the stack,
+   # but the argument list should have already been reduced to
+   # (semi arg1 arg2 ... argN) so it looks like a single argument
    if len(s.d) < arity:
-    return s.setstate('error','not enough arguments on data stack')
+    return s.setstate('error',"'parse ERROR: not enough arguments on data stack")
    s.o.pop() # discard top (previous s.top() provided all we need)
    s.d.append(Ast(name,*[s.d.pop() for _ in range(arity)][::-1]))
 
@@ -97,18 +104,31 @@ class Parser:
   op = s.next()
   while op and op.isspace(): op = s.next()
   if op is None: return s.setstate('done')
-  # if op == '[': # in binary state, '[' means function call
-  #  fn = s.d.pop().node # function name
-  #  s.reduce(bop[op][0])
-  #  s.o.append(fns[fn]) # push func to op stack
-  #  s.o.append(bop[op]) # show reduce_until where to stop
-  #  s.setstate('unary')
-  # elif op == ']':
-  #  s.reduce(bop[op][0])
-  #  s.reduce_until(bop['['])
-  #  s.d.append(Ast(s.o.pop()[-1],s.d.pop()))
-  #  s.setstate('binary')
-  if op == ')':
+
+  if op == '[': # in binary state, '[' means function call
+   fn = s.d.pop().node # function name
+   s.reduce(bop[op][0])
+   s.o.append(fns[fn]) # push func to op stack
+   s.o.append(bop[op]) # show reduce_until where to stop
+   s.setstate('unary')
+
+  elif op == ']':
+   s.reduce(bop[op][0])
+   # s.reduce_until(bop['['])
+   # args = s.d.pop()
+   # tmp = []
+   # while args.node == 'semi':
+   #  first,args = args.children
+   #  tmp.append(first)
+   # if tmp:
+   #  s.d.append(Ast(s.o.pop()[2],*(tmp+[args])))
+   # else:
+   #  s.d.append(Ast(s.o.pop()[2],args))
+   # s.setstate('binary')
+   s.d.append(Ast(s.o.pop()[-1],s.d.pop()))
+   s.setstate('binary')
+
+  elif op == ')':
    s.reduce_until(uop['('])
    args = s.d.pop()
    tmp = []
@@ -120,11 +140,14 @@ class Parser:
    else:
     s.d.append(Ast(s.o.pop()[2],args))
    s.setstate('binary')
+
   elif op in bop:
    s.reduce(bop[op][0])
    s.o.append(bop[op])
    s.setstate('unary')
-  else: s.setstate('error')
+
+  else:
+   s.setstate('error')
 
  def parse(s):
   while True:
