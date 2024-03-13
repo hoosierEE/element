@@ -2,6 +2,9 @@
 # recursive descent parsing for statements, blocks, and expressions
 from Scanner import Scanner
 
+# debug = print
+def debug(*args,**kwargs): pass
+
 bop = { #{token : (bp, arity, name)}
  '+': (30,2,'add'),
  '-': (30,2,'sub'),
@@ -11,7 +14,7 @@ bop = { #{token : (bp, arity, name)}
  '=': (30,2,'equal'),
  '[': (98,2,'fun'), # funcall (arity=2): (f: function name, [..]: argument list)
  ')': (99,0,'cparen'),
- ';': (90,2,'separator'),
+ ';': (90,2,'semi'),
 }
 
 uop = {
@@ -41,13 +44,12 @@ class Parser:
   s.i = 0 # current token pointer
   s.z = len(tokens)
  def __repr__(s): # return ' '.join(s.s[:s.i])+'¦'+' '.join(s.s[s.i:])
-  o = " ".join(x[2] for x in s.o)
-  t = ' '.join(s.s[:s.i])+'▶'+' '.join(s.s[s.i:])
+  o = ' '.join(x[2] for x in s.o)
   d = ' '.join(map(repr,s.d))
-  return f'{o:<20} • {d:>20}          «{s.state}»  {t}'
+  return f'{s.s[s.i] if s.i<s.z else " "} • {o:<20} • {d:>20} «{s.state}»'
  def top(s): return s.o[-1] if s.o else None
  def setstate(s,newstate,msg=''):
-  if msg: print(msg)
+  if msg: debug(msg)
   if s.state in ('done','error'): return
   s.state = newstate
  def end(s): return s.i >= s.z
@@ -56,7 +58,7 @@ class Parser:
 
  def reduce_until(s,*matches):
   while s.top() not in matches:
-   print('(until)',s)
+   debug(s)
    if not s.o:
     return s.setstate('error')
    op,arity,name = s.o.pop()
@@ -69,10 +71,9 @@ class Parser:
    if p >= bp:
     break
    if len(s.d) < arity:
-    return s.setstate('error','[PARSE ERROR]: not enough arguments on data stack')
-   s.o.pop() # mutate s.o
-   operands = [s.d.pop() for _ in range(arity)][::-1]
-   s.d.append(Ast(name,*operands))
+    return s.setstate('error','not enough arguments on data stack')
+   s.o.pop() # discard top (previous s.top() provided all we need)
+   s.d.append(Ast(name,*[s.d.pop() for _ in range(arity)][::-1]))
 
  def unary(s):
   op = s.next()
@@ -96,7 +97,6 @@ class Parser:
   op = s.next()
   while op and op.isspace(): op = s.next()
   if op is None: return s.setstate('done')
-  print(f'reducing {repr(op)}')
   # if op == '[': # in binary state, '[' means function call
   #  fn = s.d.pop().node # function name
   #  s.reduce(bop[op][0])
@@ -112,7 +112,7 @@ class Parser:
    s.reduce_until(uop['('])
    args = s.d.pop()
    tmp = []
-   while args.node == 'separator':
+   while args.node == 'semi':
     first,args = args.children
     tmp.append(first)
    if tmp:
@@ -128,13 +128,13 @@ class Parser:
 
  def parse(s):
   while True:
-   if s.state == 'unary': print(s); s.unary()
-   elif s.state == 'binary': print(s); s.binary()
+   if s.state == 'unary': debug(s); s.unary()
+   elif s.state == 'binary': debug(s); s.binary()
    else: break
   if s.state == 'done': s.reduce(100)
   else:
    toks = ' '.join(s.s[:s.i])
-   print(toks+'\n'+(len(toks)-1)*" "+"^--- what have we here? (parse error)")
+   debug("'parse\n"+toks+'\n'+(len(toks)-1)*" "+"^")
   assert len(s.d)<2, "leave at most one AST node on the stack"
   return s.d[0] if len(s.d) else []
 
@@ -163,13 +163,13 @@ def test():
  assert ' '.join(s.tokens) == '3 + 42 - abc99 * 34'
  try:
   Scanner('2a')
-  print('ERROR: should have raised')
+  debug('ERROR: should have raised')
  except NameError:
   pass
 
  assert all(Parser(Scanner(x).tokens).parse() for x in ['2', '-2', 'a', 'a-a', '-a*b+c', '-a<3'])
  assert any(not Parser(Scanner(x).tokens).parse() for x in ['-', '-+', '+', 'a-'])
- print('all good')
+ debug('all good')
 
 if __name__ == "__main__":
  test()
