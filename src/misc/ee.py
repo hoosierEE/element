@@ -1,61 +1,33 @@
 # https://erikeidt.github.io/The-Double-E-Method
 # recursive descent parsing for statements, blocks, and expressions
-class Scanner:
- ''' -a2+b3*51a => [- a2 + b3 * 51 a] '''
- def __init__(s,expr):
-  s.s = [*expr]
-  s.i = 0
-  s.z = len(expr)
-  s.tokens = s.tokenize()
-  assert len(expr) == sum(map(len,s.tokens)), 'wat happen'
- def tokenize(s):
-  ts = []
-  while s.peek():
-   t = ''
-   if s.peek().isnumeric(): # [0-9]+ not followed by [A-Za-z]
-    while s.peek().isnumeric():
-     t += s.next()
-    ts.append(t)
-    if s.peek().isalpha():
-     raise NameError("Numbers can't have letters in them.")
-   elif s.peek().isalpha(): # [A-Za-z][0-9A-Za-z]*
-    while s.peek().isalnum():
-     t += s.next()
-    ts.append(t)
-   else: # 1-char non-alphanumeric symbol
-    ts.append(s.next())
-  return ts
- def peek(s): return s.next(0)
- def next(s,inc=1):
-  if s.i>=s.z:
-   return ''
-  x = s.s[s.i]
-  s.i += inc
-  return x
-
+from Scanner import Scanner
 
 bop = { #{token : (bp, arity, name)}
- '+': (20,2,'add'),
- '-': (20,2,'sub'),
+ '+': (30,2,'add'),
+ '-': (30,2,'sub'),
  '*': (30,2,'mul'),
- '/': (30,2,'div'),
- '^': (40,2,'pow'),
- '=': (50,2,'equal'),
- '[': (91,2,'fun'), # funcall (arity=2): (f: function name, [..]: argument list)
- ']': (90,0,'end_group'),
+ '%': (30,2,'div'),
+ '^': (30,2,'pow'),
+ '=': (30,2,'equal'),
+ '[': (98,2,'fun'), # funcall (arity=2): (f: function name, [..]: argument list)
+ ')': (99,0,'cparen'),
+ ';': (90,2,'separator'),
 }
+
 uop = {
- '-': (20,1,'negate'),
- '*': (20,1,'first'),
- '=': (20,1,'group'),
- '[': (92,0,'begin_group'), # start group
- ']': (90,0,'empty_arglist'), # emtpy argument list
+ '-': (30,1,'negate'),
+ '*': (30,1,'first'),
+ '=': (30,1,'group'),
+ '%': (30,1,'sqrt'),
+ '(': (99,0,'list'), # start group
+ ']': (99,0,'empty_arglist'), # emtpy argument list
 }
+
 fns = {
- 'inc':  (10, 1, 'inc/1'), # def inc(x): return add2(x,1)
- 'add2': (10, 2, 'add/2'), # def add2(x,y): return x+y
- 'sub2': (10, 2, 'sub/2'), # def sub2(x,y): return x-y
- 'add3': (10, 3, 'add/3'), # def add3(x,y,z): return x+y+z
+ 'inc':  (20,1,'inc/1'), # def inc(x): return add2(x,1)
+ 'add2': (20,2,'add/2'), # def add2(x,y): return x+y
+ 'sub2': (20,2,'sub/2'), # def sub2(x,y): return x-y
+ 'add3': (20,3,'add/3'), # def add3(x,y,z): return x+y+z
 }
 
 
@@ -64,14 +36,16 @@ class Parser:
   s.state = 'unary' # current state
   s.o = [] # operator stack [(bp,arity,description)]
   s.d = [] # Ast
-  s.s = tokens
+  s.s = tokens # [::-1]
   s.i = 0 # current token pointer
   s.z = len(tokens)
- def __repr__(s):
-  return ' '.join(s.s[:s.i])+'¦'+' '.join(s.s[s.i:])
+ def __repr__(s): # return ' '.join(s.s[:s.i])+'¦'+' '.join(s.s[s.i:])
+  return f'{s.o} • {s.d}  «{s.state}»  ' + ' '.join(s.s[:s.i])+'•'+' '.join(s.s[s.i:])
  def top(s): return s.o[-1] if s.o else None
- def done(s): s.state = 'done'
- def err(s): s.state = 'error'
+ def setstate(s,newstate,msg=''):
+  if msg: print(msg)
+  if s.state in ('done','error'): return
+  s.state = newstate
  def end(s): return s.i >= s.z
  def next(s,inc=1) -> str|None:
   if s.i<s.z:
@@ -79,60 +53,83 @@ class Parser:
    s.i += inc
    return x
 
- def reduce(s,lbp):
-  while s.o and lbp <= s.o[-1][0]:
-   _,arity,desc = s.o.pop()
-   if len(s.d) < arity: return s.err()
-   operands = [s.d.pop() for _ in range(arity)]
-   s.d.append(Ast(desc,*operands))
-
  def reduce_until(s,*matches):
-  while s.o and s.top() not in matches:
-   print('reduce_until')
-   step(s)
-   _,arity,desc = s.o.pop()
-   operands = [s.d.pop() for _ in range(arity)]
-   s.d.append(Ast(desc,*operands))
+  while s.top() not in matches:
+   print('(until)',s)
+   if not s.o:
+    return s.setstate('error')
+   op,arity,name = s.o.pop()
+   args = [s.d.pop() for _ in range(arity)]
+   s.d.append(Ast(name,*(args[::-1])))
 
-  s.err()
+ def reduce(s,bp):
+  while s.o:
+   p,arity,name = s.top()
+   if p >= bp:
+    break
+   if len(s.d) < arity:
+    return s.setstate('error','[PARSE ERROR]: not enough arguments on data stack')
+   s.o.pop() # mutate s.o
+   operands = [s.d.pop() for _ in range(arity)][::-1]
+   s.d.append(Ast(name,*operands))
 
  def unary(s):
   if (op := s.next()).isalnum():
    s.d.append(Ast(op))
-   s.state = 'binary'
+   s.setstate('binary')
   elif op in uop: s.o.append(uop[op])
-  elif op is None: s.done()
-  else: s.err()
+  elif op is None: s.setstate('done')
+  else: s.setstate('error')
 
  def binary(s):
-  if (op := s.next()) == '[': # function call
-   s.reduce(bop[op][0])
-   s.o.append(bop[op])
-   s.state = 'unary'
-  elif op == ']': # could be funcall or close paren
-   s.reduce_until(bop['['],uop['['])
-   _,arity,desc = s.top()
-   if desc == 'fun':
-    s.o.pop()
-    fname,*args = [s.d.pop() for _ in range(arity)][::-1]
-    s.d.append(Ast(fname,*args))
+  op = s.next()
+  if op is None: return s.setstate('done')
+  print(f'reducing {repr(op)}')
+  # if op == '[': # in binary state, '[' means function call
+  #  fn = s.d.pop().node # function name
+  #  s.reduce(bop[op][0])
+  #  s.o.append(fns[fn]) # push func to op stack
+  #  s.o.append(bop[op]) # show reduce_until where to stop
+  #  s.setstate('unary')
+  # elif op == ']':
+  #  s.reduce(bop[op][0])
+  #  s.reduce_until(bop['['])
+  #  s.d.append(Ast(s.o.pop()[-1],s.d.pop()))
+  #  s.setstate('binary')
+  if op == ')':
+   s.reduce_until(uop['('])
+   args = s.d.pop()
+   tmp = []
+   while args.node == 'separator':
+    first,args = args.children
+    tmp.append(first)
+   if tmp:
+    s.d.append(Ast(s.o.pop()[2],*(tmp+[args])))
+   else:
+    s.d.append(Ast(s.o.pop()[2],args))
+   s.setstate('binary')
   elif op in bop:
    s.reduce(bop[op][0])
    s.o.append(bop[op])
-   s.state = 'unary'
-  elif op is None:
-   s.done()
-  else:
-   s.err()
+   s.setstate('unary')
+  else: s.setstate('error')
 
  def parse(s):
   while True:
-   step(s)
    if s.state == 'unary': s.unary()
    elif s.state == 'binary': s.binary()
    else: break
-  s.reduce(0) # finish up
-  return {'state':s.state, 'ast':s.d}
+   print(s)
+  if s.state == 'error':
+   toks = ' '.join(s.s[:s.i])
+   squiggle = (len(toks)-1)*" "+"^"
+   print(toks)
+   print(squiggle)
+  if s.state == 'done':
+   print('finishing up')
+   s.reduce(100)
+  assert len(s.d) == 1
+  return s.d[0]
 
 
 class Ast:
@@ -143,10 +140,7 @@ class Ast:
  def __repr__(s):
   if not s.children: return f'{s.node}'
   return f'({s.node} {" ".join(map(repr,s.children))})'
-
-
-def step(p):
- print(f'[{" ".join(x[2] for x in p.o)}]  --  {p.d}  --  "{"fin" if p.end() else p.s[p.i]}" ({p.state})')
+  # return f'{" ".join(map(repr,s.children))} {s.node}'
 
 
 def test():
@@ -166,10 +160,8 @@ def test():
  except NameError:
   pass
 
- assert all(Parser(Scanner(x).tokens).parse()
-            for x in ['2', '-2', 'a', 'a-a', '-a*b+c', '-a<3'])
- assert any(not Parser(Scanner(x).tokens).parse()
-            for x in ['-', '-+', '+', 'a-'])
+ assert all(Parser(Scanner(x).tokens).parse() for x in ['2', '-2', 'a', 'a-a', '-a*b+c', '-a<3'])
+ assert any(not Parser(Scanner(x).tokens).parse() for x in ['-', '-+', '+', 'a-'])
  print('all good')
 
 if __name__ == "__main__":
@@ -177,9 +169,9 @@ if __name__ == "__main__":
 
 # bp    arity  operator
 # 36    0      PrecedenceGroupingParenthesis  (
-# 32    2      FunctionCall  (
 # 36    0      EmptyArgumentList  )
 # 36    0      CloseParenOrArgList  )
+# 32    2      FunctionCall  (
 # 32    2      Selection .
 # 31    1      PrefixIncrement  ++
 # 31    1      PrefixDecrement  --
