@@ -17,6 +17,7 @@ bop = { #{token : (bp, arity, name)}
 uop = {
  '-': (30,1,'negate'),
  '*': (30,1,'first'),
+ '+': (30,1,'flip'),
  '=': (30,1,'group'),
  '%': (30,1,'sqrt'),
  '(': (99,0,'list'), # start group
@@ -40,7 +41,10 @@ class Parser:
   s.i = 0 # current token pointer
   s.z = len(tokens)
  def __repr__(s): # return ' '.join(s.s[:s.i])+'¦'+' '.join(s.s[s.i:])
-  return f'{s.o} • {s.d}  «{s.state}»  ' + ' '.join(s.s[:s.i])+'•'+' '.join(s.s[s.i:])
+  o = " ".join(x[2] for x in s.o)
+  t = ' '.join(s.s[:s.i])+'▶'+' '.join(s.s[s.i:])
+  d = ' '.join(map(repr,s.d))
+  return f'{o:<20} • {d:>20}          «{s.state}»  {t}'
  def top(s): return s.o[-1] if s.o else None
  def setstate(s,newstate,msg=''):
   if msg: print(msg)
@@ -48,10 +52,7 @@ class Parser:
   s.state = newstate
  def end(s): return s.i >= s.z
  def next(s,inc=1) -> str|None:
-  if s.i<s.z:
-   x = s.s[s.i]
-   s.i += inc
-   return x
+  if s.i<s.z: x=s.s[s.i]; s.i+=inc; return x
 
  def reduce_until(s,*matches):
   while s.top() not in matches:
@@ -74,15 +75,26 @@ class Parser:
    s.d.append(Ast(name,*operands))
 
  def unary(s):
-  if (op := s.next()).isalnum():
+  op = s.next()
+  while op and op.isspace(): op = s.next()
+  if op is None: return s.setstate('done')
+  if op.isnumeric():
+   nums = [Ast(op)]
+   while (op := s.next()):
+    if op.isspace(): continue
+    if op.isnumeric(): nums.append(Ast(op))
+    else: s.i-=1; break
+   s.d.append(Ast('array',*nums) if len(nums)>1 else Ast(*nums))
+   s.setstate('binary')
+  elif op.isalnum(): # name
    s.d.append(Ast(op))
    s.setstate('binary')
   elif op in uop: s.o.append(uop[op])
-  elif op is None: s.setstate('done')
   else: s.setstate('error')
 
  def binary(s):
   op = s.next()
+  while op and op.isspace(): op = s.next()
   if op is None: return s.setstate('done')
   print(f'reducing {repr(op)}')
   # if op == '[': # in binary state, '[' means function call
@@ -116,20 +128,15 @@ class Parser:
 
  def parse(s):
   while True:
-   if s.state == 'unary': s.unary()
-   elif s.state == 'binary': s.binary()
+   if s.state == 'unary': print(s); s.unary()
+   elif s.state == 'binary': print(s); s.binary()
    else: break
-   print(s)
-  if s.state == 'error':
+  if s.state == 'done': s.reduce(100)
+  else:
    toks = ' '.join(s.s[:s.i])
-   squiggle = (len(toks)-1)*" "+"^"
-   print(toks)
-   print(squiggle)
-  if s.state == 'done':
-   print('finishing up')
-   s.reduce(100)
-  assert len(s.d) == 1
-  return s.d[0]
+   print(toks+'\n'+(len(toks)-1)*" "+"^--- what have we here? (parse error)")
+  assert len(s.d)<2, "leave at most one AST node on the stack"
+  return s.d[0] if len(s.d) else []
 
 
 class Ast:
@@ -188,7 +195,6 @@ if __name__ == "__main__":
 # 24    2      Subtraction  -
 # 22    2      BitwiseLeftShift  <<
 # 22    2      BitwiseRightShift  >>
-# 20    2      Order <=>
 # 18    2      LessThan  <
 # 18    2      LessOrEqual <=
 # 18    2      GreaterThan  >
@@ -203,15 +209,6 @@ if __name__ == "__main__":
 # 5     0      TernaryTest  ?
 # 5     3      TernaryChoice  :
 # 3     2      Assignment  =
-# 3     2      AssignmentMultiplication  *=
-# 3     2      AssignmentDivision  /=
-# 3     2      AssignmentModulo  %=
 # 3     2      AssignmentAddition  +=
-# 3     2      AssignmentSubtraction  -=
-# 3     2      AssignmentBitwiseAnd  &=
-# 3     2      AssignmentBitwiseXor  ^=
-# 3     2      AssignmentBitwiseOr  |=
-# 3     2      AssignmentBitwiseLeftShift  <<=
-# 3     2      AssignmentBitwiseRightShift  >>=
 # 0     2      ExpressionSeparator  ,
 # 0     2      ArgumentSeparator  ,

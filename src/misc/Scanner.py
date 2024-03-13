@@ -1,8 +1,8 @@
 class Scanner:
  ''' -a2+b3*51a => [- a2 + b3 * 51 a] '''
- def __init__(s,expr):
-  s.s = [*expr]
-  s.i = 0
+ def __init__(s,expr:str):
+  s.s = [*expr] # individual characters
+  s.i = 0 # current index
   s.z = len(expr)
   s.tokens = s.tokenize()
   assert len(expr) == sum(map(len,s.tokens)), 'wat happen'
