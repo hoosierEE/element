@@ -15,7 +15,7 @@ bop = { #{token : (bp, arity, name)}
  ':': (5,2,'imm'), # immutable name binding
  '::':(5,2,'mut'), # mutable binding or update
  ';': (6,2,'sep'), # function arg separator or list item separator
- '[': (7,2,'arg'), # function invoke (arity=2): (f: function name, [..]: argument list)
+ '[': (5,2,'arg'), # function invoke (arity=2): (f: function name, [..]: argument list)
  ']': (8,0,'arg'), # close argument list
  ')': (8,0,'cpa'), # FIXME: 'a;(b;c)' is (sep a b c) but should be (sep a (list b c))
  '':  (9,0,'fin'),
@@ -27,7 +27,7 @@ uop = {
  '+': (5,1,'flp'),
  '=': (5,1,'grp'),
  '%': (5,1,'sqr'),
- '(': (8,0,'opa'), # start group
+ '(': (4,0,'opa'), # start group
  ']': (8,0,'nil'), # emtpy argument list "nilad"
 }
 
@@ -117,23 +117,27 @@ class Parser:
  def binary(s):
   op = s.next()
   while op and op.isspace(): op = s.next() # consume whitespace tokens
-  if op is None: return s.setstate('done')
-
-  elif op == ')':
-   while s.o:
-    s.reduce(bop,op)
-    p,arity,nm = s.peeko()
-    if nm=='opa':
-     s.popo()
-     break # reduce until 'arg', then build funcall node
-    args = [s.popd() for _ in range(arity)][::-1]
-    s.pushd(Ast(nm,*args)) # reduce top operator
+  if op is None:
+   return s.setstate('done')
 
   elif op == '[': # in binary state, '[' means 'call'
    fn = s.popd().node # extract function name
    s.pusho((5,-1,fn)) # push name to op stack (defer arity to runtime)
    s.pusho(bop[op]) # show ] where to stop
    s.setstate('unary')
+
+  elif op == ')':
+   while s.o:
+    s.reduce(bop,op)
+    p,arity,nm = s.peeko()
+    if nm=='opa':
+     _,_,nm = s.popo()
+     d = s.popd()
+     if d.node == 'sep': s.pushd(Ast('list',*d.children))
+     else: s.pushd(Ast(nm,d))
+     break # reduce until 'arg', then build funcall node
+    args = [s.popd() for _ in range(arity)][::-1]
+    s.pushd(Ast(nm,*args)) # reduce top operator
 
   elif op == ']':
    while s.o:
