@@ -15,7 +15,7 @@ class Scanner:
  def tokenize(s):
   ts = []
   while s.peek():
-   t = ''
+   t = '' # current token
    if s.peek().isnumeric(): # [0-9]+ not followed by [A-Za-z]
     while s.peek().isnumeric(): t += s.next()
     ts.append(t)
