@@ -14,11 +14,11 @@ bop = { #{token : (bp, arity, name)}
  '=': (5,2,'equ'),
  ':': (5,2,'imm'), # immutable name binding
  '::':(5,2,'mut'), # mutable binding or update
- ';': (6,2,'sep'), # function arg separator or list item separator
- '[': (5,2,'arg'), # function invoke (arity=2): (f: function name, [..]: argument list)
- ']': (8,0,'arg'), # close argument list
- ')': (8,0,'cpa'), # FIXME: 'a;(b;c)' is (sep a b c) but should be (sep a (list b c))
- '':  (9,0,'fin'),
+ ';': (6,2,'sep'), # argument or list item separator
+ '[': (5,2,'arg'), # pops: name from s.o, arglist from s.d
+ ']': (8,0,'arg'), # arglist
+ ')': (8,0,'cpa'),
+ '':  (9,0,'fin'), # end of tokens
 }
 
 uop = {
@@ -27,7 +27,10 @@ uop = {
  '+': (5,1,'flp'),
  '=': (5,1,'grp'),
  '%': (5,1,'sqr'),
- '(': (4,0,'opa'), # start group
+ # ';': (6,1,'skp'), # skip
+ # ')': (8,0,'cpa'),
+ '(': (4,0,'opa'), # open paren for grouping (-a)+b (and;for;lists)
+ '[': (5,0,'prg'), # progn
  ']': (8,0,'nil'), # emtpy argument list "nilad"
 }
 
@@ -44,6 +47,7 @@ class Parser:
   d = ' '.join(map(repr,s.d))
   t = f'{s.state}'
   return f'[{o:<30}]  [{d:<50}]  {t:<8}  "{s.s[s.i] if s.i<s.z else ""}"'
+ def peekd(s): return s.d[-1] if s.d else None
  def peeko(s): return s.o[-1] if s.o else None
  def popd(s): return s.d.pop()
  def popo(s): return s.o.pop()
@@ -68,7 +72,7 @@ class Parser:
   s.setstate('binary')
   while op and op.isspace(): op = s.next() # consume leading whitespace
   if op is None: return s.setstate('done')
-  if op.isnumeric() or op=='-':
+  elif op.isnumeric() or op=='-':
    if op=='-':
     if not s.next(0).isnumeric():
      s.pusho(uop[op])
@@ -90,7 +94,11 @@ class Parser:
   elif op.isalnum(): s.pushd(Ast(op)) # name
   elif op == ']':
    if s.popo()[2] != 'arg': return s.error('unmatched bracket')
-   s.pushd(Ast(s.popo()[2],uop[op][2]))
+   s.pushd(Ast(s.popo()[2],Ast('args')))
+  elif op == ';':
+   s.pushd(Ast('nil'))
+   s.pusho(bop[op]) # NOTE: binary op even though we're in unary state, for f[n;] and (;m;)
+   s.setstate('unary')
   elif op in uop:
    s.pusho(uop[op])
    s.setstate('unary')
@@ -99,7 +107,8 @@ class Parser:
 
  def reduce_top(s,src:dict,op:str):
   p,arity,name = s.popo()
-  if len(s.d) < arity: return s.error("not enough arguments on data stack")
+  if len(s.d) < arity:
+   return s.error("not enough arguments on data stack")
   args = [s.popd() for _ in range(arity)][::-1]
   if name=='sep' and args[1].node == 'sep':
    a,b = args
@@ -116,7 +125,8 @@ class Parser:
 
  def binary(s):
   op = s.next()
-  while op and op.isspace(): op = s.next() # consume whitespace tokens
+  while op and op.isspace():
+   op = s.next() # consume whitespace tokens
   if op is None:
    return s.setstate('done')
 
@@ -130,12 +140,11 @@ class Parser:
    while s.o:
     s.reduce(bop,op)
     p,arity,nm = s.peeko()
-    if nm=='opa':
-     _,_,nm = s.popo()
-     d = s.popd()
-     if d.node == 'sep': s.pushd(Ast('list',*d.children))
-     else: s.pushd(Ast(nm,d))
-     break # reduce until 'arg', then build funcall node
+    if nm == 'opa':
+     s.popo()
+     if s.peekd().node == 'sep': # (a;b;c;d;e)
+      s.pushd(Ast('list',*s.popd().children))
+     break
     args = [s.popd() for _ in range(arity)][::-1]
     s.pushd(Ast(nm,*args)) # reduce top operator
 
@@ -143,22 +152,17 @@ class Parser:
    while s.o:
     s.reduce(bop,op)
     p,arity,nm = s.peeko()
-    if nm=='arg':
+    if nm == 'arg':
      s.popo()
+     if s.peekd().node == 'sep': # [x;y;z]
+      s.pushd(Ast('args',*s.popd().children))
+     else:
+      s.pushd(Ast('args',s.popd()))
      break # reduce until 'arg', then build funcall node
     args = [s.popd() for _ in range(arity)][::-1]
     s.pushd(Ast(nm,*args)) # reduce top operator
-
-   s.pushd(Ast(s.popo()[2],s.popd()))
+   s.pushd(Ast(s.popo()[2],s.popd())) # now push the function call itself
    s.setstate('binary')
-
-  # elif op == ';':
-  #  # if name == 'sep' and s.peeko()[2] == 'sep':
-  #  #  p,a,n = s.popo()
-  #  #  s.pusho((p,a+1,n))
-  #  s.reduce(bop,op)
-  #  p,a,n = bop[op]
-  #  s.setstate('unary')
 
   elif op in bop:
    s.reduce(bop,op)
@@ -181,7 +185,7 @@ class Parser:
    toks = ' '.join(s.s[:s.i])
    debug("'parse\n"+toks+'\n'+(len(toks)-1)*" "+"^")
   assert len(s.d)<2, "leave at most one AST node on the stack"
-  return s.d
+  return s.d[0] if len(s.d) else []
 
 
 class Ast:
@@ -191,8 +195,8 @@ class Ast:
   s.children = children
  def __repr__(s):
   if not s.children: return f'{s.node}'
-  return f'({s.node} {" ".join(map(repr,s.children))})' # lisp style
-  # return f'{s.node}({",".join(map(repr,s.children))})' # c-style
+  # return f'({s.node} {" ".join(map(repr,s.children))})' # lisp style
+  return f'{s.node}({",".join(map(repr,s.children))})' # c-style
   # return f'{" ".join([repr(x) for x in s.children[::-1]])} {s.node}' # forth style (reverse args)
 
 
