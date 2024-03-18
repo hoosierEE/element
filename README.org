@@ -41,20 +41,20 @@ Most Ks have:
 - right-to-left evaluation and no operator precedence: =2*3+4= is =2*(3+4)=
 - partial application or "projections" instead of closures: ={x+y+z}[1;;3]= is ={1+x+3}=
 
-** Element quirks
-Element diverges from "typical K":
+** Element is different from K
+There are multiple K dialects with slightly different features.
+Here are the features that are most unique to Element:
 - implicit hardware acceleration by default
   + small data processed on one CPU
-  + larger or large and irregular data processed on multiple CPUs
-  + really large and regular data processed on GPU
+  + big/irregular data processed on multiple CPUs
+  + big/regular data processed on GPU
+- apply explicitly: use =f[x]= or =f@x= but not =f x=
 - lexical scope
 - closures
-- =\cd=, =\d=, =\l file.k= etc. provided by REPL, not runtime
 - string data type (distinct from "list of char")
-- =x::y= declare mutable, change =mut::1; mut::2 /okay=
-- =x:y= declare immutable =imm:1; imm::2 /error=
-- =>s= open
-- =<s= close
+- =x::y= declare mutable / update: =a::1; a::2= (ok, =a= is mutable)
+- =x:y= declare immutable =b:1; b::2= is (error, =b= is immutable)
+- =\cd=, =\d=, =\l file.k= etc. provided by REPL, not runtime
 
 * Install
 Compile for GPU with NVIDIA's =nvcc= compiler:

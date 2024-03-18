@@ -7,31 +7,31 @@ debug = print
 
 bop = { #{token : (bp, arity, name)}
  '+': (5,2,'add'),
- '-': (5,2,'sub'),
- '*': (5,2,'mul'),
- '%': (5,2,'div'),
- '^': (5,2,'pow'),
- '=': (5,2,'equ'),
+ '-': (5,2,'sub'), # subtract
+ '*': (5,2,'mul'), # multiply
+ '%': (5,2,'div'), # divide
+ '^': (5,2,'pow'), # power
+ '=': (5,2,'equ'), # equals
  ':': (5,2,'imm'), # immutable name binding
  '::':(5,2,'mut'), # mutable binding or update
+ '[': (6,2,'arg'), # pops: name from s.o, arglist from s.d
  ';': (6,2,'sep'), # argument or list item separator
- '[': (5,2,'arg'), # pops: name from s.o, arglist from s.d
- ']': (8,0,'arg'), # arglist
- ')': (8,0,'cpa'),
+ # ']': (8,0,'gra'), # arglist
+ # ')': (8,0,'cpa'),
  '':  (9,0,'fin'), # end of tokens
 }
 
 uop = {
- '-': (5,1,'neg'),
- '*': (5,1,'1st'),
- '+': (5,1,'flp'),
- '=': (5,1,'grp'),
- '%': (5,1,'sqr'),
+ '-': (5,1,'neg'), # negate
+ '*': (5,1,'fir'), # first
+ '+': (5,1,'flp'), # flip
+ '=': (5,1,'grp'), # group
+ '%': (5,1,'sqr'), # square root
  # ';': (6,1,'skp'), # skip
- # ')': (8,0,'cpa'),
- '(': (4,0,'opa'), # open paren for grouping (-a)+b (and;for;lists)
- '[': (5,0,'prg'), # progn
- ']': (8,0,'nil'), # emtpy argument list "nilad"
+ '(': (6,0,'opa'), # open paren for (grouping) (and;lists)
+ '[': (6,1,'prg'), # progn
+ ')': (8,0,'cpa'), # close paren
+ ']': (0,0,'nil'), # emtpy argument list "nilad"
 }
 
 class Parser:
@@ -53,9 +53,7 @@ class Parser:
  def popo(s): return s.o.pop()
  def pushd(s,x): s.d.append(x)
  def pusho(s,x): s.o.append(x)
- def error(s,msg):
-  debug(msg)
-  s.state = 'error'
+ def error(s,msg): debug('ERROR: '+msg);s.state = 'error'
  def setstate(s,newstate):
   if newstate not in ('binary','unary','done'): raise
   if s.state in ('done','error'): return # don't change either of these states
@@ -68,6 +66,13 @@ class Parser:
   return x
 
  def unary(s):
+  '''
+  In unary state, a closing token like ")" or "]" implies projection as in
+  "(3+)" and "f[x;]" (meanwhile "f[;x]" is another kind of projection) or a
+  progn like "[x;]" with an empty final expression.
+
+  Else, we have "(" or "[" to start a list or progn, or unary ops, or operands.
+  '''
   op = s.next()
   s.setstate('binary')
   while op and op.isspace(): op = s.next() # consume leading whitespace
@@ -89,19 +94,44 @@ class Parser:
     elif space and op=='-' and s.next(0).isnumeric():
      nums.append(Ast('-'+s.next()))
      space = 0
-    else: s.i -= 1; break
+    else: s.i -= 1;break
    s.pushd(Ast('array',*nums) if len(nums)>1 else Ast(*nums))
   elif op.isalnum(): s.pushd(Ast(op)) # name
+
+  # handle ] or ) in unary state which must be one of:
+  # - empty arglist: f[]
+  # - function projection: f[a;]
+  # - list/progn ending with nil: (a;) [a;]
+  # - parenthesized projection: (2+)
+
   elif op == ']':
-   if s.popo()[2] != 'arg': return s.error('unmatched bracket')
-   s.pushd(Ast(s.popo()[2],Ast('args')))
-  elif op == ';':
+   # s.reduce_square(op)
+   if s.peeko()[2] in ('prg','sep'): # [;]
+    s.pushd(Ast('nil'))
+    s.reduce_square(op)
+   elif s.popo()[2] == 'arg': # f[]
+    s.pushd(Ast(s.popo()[2],Ast(uop[op][2])))
+   else:
+    return s.error('unmatched "]"')
+
+  elif op == ')':
+   if s.peeko()[2] in ('opa','sep'):
+    s.pushd(Ast('nil'))
+    s.reduce_paren(op)
+   elif s.popo()[2] == 'list':
+    s.pushd(Ast(s.popo()[2],Ast(uop[op][2])))
+   else:
+    s.error('unmatched ")"')
+
+  elif op == ';': # leading ";" as in (;x) or ";x" or "2+;x" - reduce up to ";"
    s.pushd(Ast('nil'))
-   s.pusho(bop[op]) # NOTE: binary op even though we're in unary state, for f[n;] and (;m;)
+   s.pusho(bop[op]) # NOTE: binary op even though we're in unary state, for (;m)
    s.setstate('unary')
+
   elif op in uop:
    s.pusho(uop[op])
    s.setstate('unary')
+
   else: s.error(f'unidentified unary op: {op}')
 
 
@@ -110,25 +140,59 @@ class Parser:
   if len(s.d) < arity:
    return s.error("not enough arguments on data stack")
   args = [s.popd() for _ in range(arity)][::-1]
-  if name=='sep' and args[1].node == 'sep':
+  if name == 'sep' and args[-1].node == 'sep': # merge
    a,b = args
-   s.pushd(Ast(name,a,*b.children))
+   s.pushd(Ast(name,a,*b.children)) # (cons a (cons b c)) => (a b c)
+   print(s,"merge sep")
+  elif name == 'prg' and args[-1].node == 'sep': # (prg (sep ...)) => (prg ...)
+   s.pushd(Ast(name,*args[-1].children))
+   print(s,'merge prg')
   else:
    s.pushd(Ast(name,*args))
-  print(s)
 
  def reduce(s,src:dict,op:str):
-  while s.o:
+  while s.o and s.state != 'error':
    p,arity,name = s.peeko()
-   if name in ('arg','opa') or p>=src[op][0]: break
+   if p>=src[op][0]: break
+   # if name in ('arg','opa') or p>=src[op][0]: break
    s.reduce_top(src,op)
+
+ def reduce_paren(s,op):
+  while s.o:
+   s.reduce(bop,op)
+   p,arity,nm = s.peeko()
+   if nm == 'opa':
+    s.popo()
+    if s.peekd().node == 'sep': # merge
+     s.pushd(Ast('list',*s.popd().children)) # (a;b;c;d;e)
+    break
+   args = [s.popd() for _ in range(arity)][::-1]
+   s.pushd(Ast(nm,*args)) # reduce top operator
+
+ def reduce_square(s,op):
+  while True:
+   s.reduce(bop,op)
+   if not s.o: return
+   p,arity,nm = s.peeko()
+   if nm == 'arg':
+    s.popo()
+    break # reduce until 'arg', then build funcall node
+   if nm == 'prg':
+    break
+   args = [s.popd() for _ in range(arity)][::-1]
+   s.pushd(Ast(nm,*args)) # reduce top operator
+  # if s.peekd() is None:
+  #  s.pushd(Ast(nm,s.popo()))
+  if s.peekd().node == 'sep': # merge
+   print("merging")
+   s.pushd(Ast(s.popo()[2],*s.popd().children)) # [x;y;z]
+  else:
+   s.pushd(Ast(s.popo()[2],s.popd()))
 
  def binary(s):
   op = s.next()
-  while op and op.isspace():
-   op = s.next() # consume whitespace tokens
-  if op is None:
-   return s.setstate('done')
+  while op and op.isspace(): op = s.next() # consume whitespace tokens
+  if op is None: return s.setstate('done')
 
   elif op == '[': # in binary state, '[' means 'call'
    fn = s.popd().node # extract function name
@@ -137,31 +201,10 @@ class Parser:
    s.setstate('unary')
 
   elif op == ')':
-   while s.o:
-    s.reduce(bop,op)
-    p,arity,nm = s.peeko()
-    if nm == 'opa':
-     s.popo()
-     if s.peekd().node == 'sep': # (a;b;c;d;e)
-      s.pushd(Ast('list',*s.popd().children))
-     break
-    args = [s.popd() for _ in range(arity)][::-1]
-    s.pushd(Ast(nm,*args)) # reduce top operator
+   s.reduce_paren(op)
 
   elif op == ']':
-   while s.o:
-    s.reduce(bop,op)
-    p,arity,nm = s.peeko()
-    if nm == 'arg':
-     s.popo()
-     if s.peekd().node == 'sep': # [x;y;z]
-      s.pushd(Ast('args',*s.popd().children))
-     else:
-      s.pushd(Ast('args',s.popd()))
-     break # reduce until 'arg', then build funcall node
-    args = [s.popd() for _ in range(arity)][::-1]
-    s.pushd(Ast(nm,*args)) # reduce top operator
-   s.pushd(Ast(s.popo()[2],s.popd())) # now push the function call itself
+   s.reduce_square(op)
    s.setstate('binary')
 
   elif op in bop:
@@ -175,12 +218,10 @@ class Parser:
  def parse(s):
   debug(f' {"operators":^30}   {"data":^50}    state     next token')
   while True:
-   if s.state == 'unary': debug(s);s.unary()
-   elif s.state == 'binary': debug(s);s.binary()
+   if s.state == 'unary': debug(s); s.unary()
+   elif s.state == 'binary': debug(s); s.binary()
    else: break
-  if s.state == 'done':
-   print('done')
-   s.reduce(bop,'')
+  if s.state == 'done': s.reduce(bop,'')
   else:
    toks = ' '.join(s.s[:s.i])
    debug("'parse\n"+toks+'\n'+(len(toks)-1)*" "+"^")
@@ -220,6 +261,8 @@ def test():
  assert all(Parser(Scanner(x).tokens).parse() for x in ['2', '-2', 'a', 'a-a', '-a*b+c', '-a<3'])
  assert any(not Parser(Scanner(x).tokens).parse() for x in ['-', '-+', '+', 'a-'])
  debug('all good')
+
+def parse(s): return Parser(Scanner(s).tokens).parse()
 
 if __name__ == "__main__":
  test()
