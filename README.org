@@ -43,14 +43,14 @@ Most Ks have:
 
 ** Element is different from K
 There are multiple K dialects with slightly different features.
-Here are the features that are most unique to Element:
+Most Element features stem from [[https://codeberg.org/ngn/k][ngn/k]], but has some differences:
 - implicit hardware acceleration by default
   + small data processed on one CPU
   + big/irregular data processed on multiple CPUs
   + big/regular data processed on GPU
 - lexical scope
 - closures
-- string data type (distinct from "list of char")
+- string data type (distinct from "list of char") as in [[https://anaseto.codeberg.page/goal/][goal]]
 - =x::y= declare mutable / update: =a::1; a::2= (ok, =a= is mutable)
 - =x:y= declare immutable =b:1; b::2= is (error, =b= is immutable)
 - =\cd=, =\d=, =\l file.k= etc. provided by REPL, not runtime
