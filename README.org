@@ -48,7 +48,6 @@ Here are the features that are most unique to Element:
   + small data processed on one CPU
   + big/irregular data processed on multiple CPUs
   + big/regular data processed on GPU
-- apply explicitly: use =f[x]= or =f@x= but not =f x=
 - lexical scope
 - closures
 - string data type (distinct from "list of char")
