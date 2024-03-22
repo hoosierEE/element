@@ -3,22 +3,47 @@
 from typing import List
 debug = print
 def _debug(*a,**b): pass
-
-bop = { # token:(order,arity,name) high order binds later than low order
+# token:(order,arity,name) high order binds after low order
+bop = {
  '(': (1,1,'fun'), # function call
- '*': (2,2,'mul'),
- '%': (2,2,'div'),
- '+': (2,2,'add'),
- '-': (2,2,'sub'),
+ '#': (2,2,'cpy'), # copy
+ '%': (2,2,'div'), # divide
+ '&': (2,2,'min'), # min/and
+ '*': (2,2,'mul'), # multiply
+ '+': (2,2,'add'), # add
+ ',': (2,2,'joi'), # join
+ '-': (2,2,'sub'), # subtract
+ '<': (2,2,'les'), # less
+ '=': (2,2,'equ'), # equal
+ '>': (2,2,'mor'), # more
+ '|': (2,2,'max'), # max/or
+ '~': (2,2,'mat'), # match
  ';': (4,2,'seq'), # expression or argument separator
  ')': (9,0,'cpa'), # close paren
  '':  (9,0,'fin'), # no more tokens
 }
 
 uop = {
- '-': (2,1,'neg'),
+ '#': (2,1,'cnt'), # count
+ '%': (2,1,'sqr'), # square root
+ '&': (2,1,'whe'), # where
+ '*': (2,1,'fst'), # first
+ '+': (2,1,'flp'), # flip
+ ',': (2,1,'rav'), # ravel
+ '-': (2,1,'neg'), # negate
+ '<': (2,1,'gru'), # grade up
+ '=': (2,1,'grp'), # group
+ '>': (2,1,'grd'), # grade down
+ '|': (2,1,'rev'), # reverse
+ '~': (2,1,'not'), # logical not
  ')': (3,0,'arg'), # empty arglist
- '(': (9,1,'opa'), # list
+ '(': (9,1,'opa'), # open paren - could be for grouping or starting a list
+}
+
+adv = {
+ "'": (2,1,"ech"), # each
+ '/': (2,1,'red'), # reduce
+ '\\':(2,1,'scn'), # scan
 }
 
 OW,DW = 20,20
@@ -61,16 +86,21 @@ class Parser:
 
 
  def unary(s):
-  s.setstate('binary') # we'll usually (but not always) switch after unary state
+  s.setstate('binary')
   if (op:=s.next()) is None:
    s.setstate('done')
+  elif s.next(0) in adv: # must handle this before "-"
+   p,a,o1 = uop[op]
+   _,_,o2 = adv[s.next()]
+   s.pusho((p,a,o2+"."+o1)) # derived verb
+   s.setstate('unary')
   elif op.isnumeric() or op=='-':
    if op=='-':
     if not s.next(0).isnumeric():
      s.pusho(uop[op]) # unary minus
      s.setstate('unary')
      return
-    s.pushd(Ast(op+s.next()))
+    s.pushd(Ast(op+s.next())) # negative number
    else:
     s.pushd(Ast(op))
   elif op.isalnum():
@@ -89,7 +119,11 @@ class Parser:
   elif op in uop:
    s.pusho(uop[op])
    s.setstate('unary')
-  else: s.error(f'unidentified unary op: {op}')
+  elif op in adv:
+   s.pusho(adv[op])
+   s.setstate('unary')
+  else:
+   s.error(f'unidentified unary op: {op}')
 
 
  def reduce(s,prec:int,*matches:tuple):
@@ -128,6 +162,11 @@ class Parser:
    s.setstate('done')
   elif op == ')': # (a;b) and function calls: f(x;y)
    s.reduce_paren()
+  elif s.next(0) in adv:
+   p,a,o1 = bop[op]
+   _,_,o2 = adv[s.next()]
+   s.pusho((p,a,o2+"."+o1))
+   s.setstate('unary')
   elif op in bop:
    s.reduce(bop[op][0])
    s.pusho(bop[op])
@@ -159,12 +198,14 @@ class Ast:
  def __init__(s,node,*children):
   s.node = node
   s.children = children
+ def __eq__(s,other):
+  return s.node==other.node and s.children==other.children
  def __repr__(s):
   if not s.children and s.node != 'list': return f'{s.node}'
   return f'({s.node} {" ".join(map(repr,s.children))})' # lisp style
 
 def parse(s:str):
- '''tokens are single characters'''
+ '''trivial tokenizer: single char tokens, no spaces'''
  return Parser(list(s)).parse()
 
 def test(verbose=0):
