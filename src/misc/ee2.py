@@ -1,52 +1,30 @@
 # https://erikeidt.github.io/The-Double-E-Method
-# recursive descent parsing for statements, blocks, and expressions
 from typing import List
 debug = print
 def _debug(*a,**b): pass
-# token:(order,arity,name) high order binds after low order
-bop = {
- '(': (1,1,'fun'), # function call
- '#': (2,2,'cpy'), # copy
- '%': (2,2,'div'), # divide
- '&': (2,2,'min'), # min/and
- '*': (2,2,'mul'), # multiply
- '+': (2,2,'add'), # add
- ',': (2,2,'joi'), # join
- '-': (2,2,'sub'), # subtract
- '<': (2,2,'les'), # less
- '=': (2,2,'equ'), # equal
- '>': (2,2,'mor'), # more
- '|': (2,2,'max'), # max/or
- '~': (2,2,'mat'), # match
- ';': (4,2,'seq'), # expression or argument separator
- ')': (9,0,'cpa'), # close paren
- '':  (9,0,'fin'), # no more tokens
+RMAX = 0
+
+bop = {# binary token:(precedence,arity,name) high precedence binds after low
+ '*': (2,2,'mul'),
+ '+': (2,2,'add'),
+ '-': (2,2,'sub'),
+ '(': (2,2,'fun'), # call
+ ';': (3,2,'seq'), # separator
 }
 
-uop = {
- '#': (2,1,'cnt'), # count
- '%': (2,1,'sqr'), # square root
- '&': (2,1,'whe'), # where
- '*': (2,1,'fst'), # first
- '+': (2,1,'flp'), # flip
- ',': (2,1,'rav'), # ravel
- '-': (2,1,'neg'), # negate
- '<': (2,1,'gru'), # grade up
- '=': (2,1,'grp'), # group
- '>': (2,1,'grd'), # grade down
- '|': (2,1,'rev'), # reverse
- '~': (2,1,'not'), # logical not
- ')': (3,0,'arg'), # empty arglist
- '(': (9,1,'opa'), # open paren - could be for grouping or starting a list
+uop = {# unary
+ '#': (2,1,'count'), # count
+ '-': (2,1,'negate'), # negate
+ '(': (2,1,'opa'), # open parenthesis for group/list
 }
 
 adv = {
- "'": (2,1,"ech"), # each
- '/': (2,1,'red'), # reduce
- '\\':(2,1,'scn'), # scan
+ "'": (2,1,"each"), # each
+ '/': (2,1,'reduce'), # reduce
+ '\\':(2,1,'scan'), # scan
 }
 
-OW,DW = 20,20
+OW,DW = 20,31
 class Parser:
  def __init__(s,tokens:List[str]):
   s.state = 'unary' # current state : Literal['unary','binary','error','done']
@@ -77,23 +55,15 @@ class Parser:
   if newstate not in ('binary','unary','done'): raise
   if s.state in ('done','error'): return # don't change either of these states
   s.state = newstate
- def end(s): return s.i>=s.z
- def next(s,inc=1): # doubles as peek() when inc=0
-  if s.end(): return None
-  x = s.s[s.i]
-  s.i += inc
-  return x
-
+ def next(s,inc=1): # peek() when inc=0
+  if s.i<s.z:
+   s.i += inc
+   return s.s[s.i-inc]
 
  def unary(s):
   s.setstate('binary')
   if (op:=s.next()) is None:
    s.setstate('done')
-  elif s.next(0) in adv: # must handle this before "-"
-   p,a,o1 = uop[op]
-   _,_,o2 = adv[s.next()]
-   s.pusho((p,a,o2+"."+o1)) # derived verb
-   s.setstate('unary')
   elif op.isnumeric() or op=='-':
    if op=='-':
     if not s.next(0).isnumeric():
@@ -106,49 +76,95 @@ class Parser:
   elif op.isalnum():
    s.pushd(Ast(op)) # name
   elif op==';':
-   s.pushd(Ast('()')) # add "()" left argument to ","
-   s.pusho(bop[op]) # treat as binary
+   s.pushd(Ast('nil')) # insert "nil" left argument to ";"
+   s.pusho(bop[op]) # then treat as if it was binary all along
    s.setstate('unary')
-  elif op==')':
-   if s.peeko()[2] in ('fun','seq'):
-    s.pushd(Ast('()'))
+  elif op==')': # and s.peeko()[2] in ('fun','opa','seq'):
+   if s.peeko()[2] in ('fun','opa','seq'):
+    s.pushd(Ast('nil'))
     s.reduce_paren()
+    # s.setstate('unary')
    else:
-    s.pushd(Ast('()'))
-    s.popo()
+    s.pusho((1,2,'proj'))
+    s.pushd(Ast('nil'))
+    # s.pushd(Ast('lambda',Ast('x'),Ast(s.popo()[2],s.popd(),Ast('x'))))
+    s.reduce_paren()
   elif op in uop:
    s.pusho(uop[op])
    s.setstate('unary')
   elif op in adv:
-   s.pusho(adv[op])
+   debug(s,'op in adv')
+   p,a,o1 = s.popo()
+   _,_,o2 = adv[op]
+   s.pusho((p,a,f'({o2} {o1})'))
    s.setstate('unary')
-  else:
-   s.error(f'unidentified unary op: {op}')
+  else: # projections like f[;;z] or (2+) can be converted to lambdas
+   print('  projection')
+   s.pusho((0,1,'prj')) # projection
+   s.reduce_paren()
+   s.setstate('unary')
 
+ def reduce_match(s,op):
+  while True:
+   if not s.o:
+    return s.error('unexpected ")"')
+   p,a,o = s.peeko()
+   if o == op:
+    break
+   s.reduce_top(*s.popo())
 
- def reduce(s,prec:int,*matches:tuple):
+ def reduce_prec(s,prec):
   while s.o and s.state != 'error':
-   p,arity,name = s.peeko()
-   if len(s.d)<arity: return
-   if matches and name in matches: return
-   if name=='fun': return
-   if p>=prec: return
-   s.popo()
-   args = [s.popd() for _ in range(arity)][::-1]
-   if name=='seq' and args[1].node=='seq':
-    a,b = args
-    bs = (Ast(x) for x in b.children)
-    s.pushd(Ast(name,a,*bs)) # (cons a (cons b c)) => (a b c)
-   else:
-    s.pushd(Ast(name,*args))
+   p,a,op = s.peeko()
+   if op in ('fun','lst','opa') or prec>=p:
+    break
+   s.reduce_top(*s.popo())
+
+ def reduce_top(s,p,a,op):
+  if op in ('fun','lst','opa'):
+   return s.error('unmatched (')
+  args = [s.popd() for _ in range(a)][::-1]
+  s.merge_seq(args,op)
+  # s.pushd(Ast(op,*args))
+
+ def merge_seq(s,args,name):
+  if name=='seq' and args[1].node=='seq':
+   a,b = args
+   bs = (Ast(x) for x in b.children)
+   s.pushd(Ast(name,a,*bs))
+  elif name=='opa' and args[0].node=='seq':
+   s.pushd(Ast('lst',*args[0].children))
+  else:
+   s.pushd(Ast(name,*args))
+
+ # def reduce(s,prec:int,*matches:tuple):
+ #  while s.o and s.state != 'error': # until operator stack empty
+ #   p,arity,name = s.peeko()
+ #   if name in matches:        return debug('  bail')
+ #   if len(s.d)<arity:         return debug('  arity')
+ #   if not matches and p>prec: return debug('  precedence')
+ #   # if name in matches or len(s.d)<arity or p<=prec: return debug('  bail')
+ #   s.popo()
+ #   args = [s.popd() for _ in range(arity)][::-1]
+ #   if name=='seq' and args[1].node=='seq': # merge repeated ";" into single "seq"
+ #    a,b = args
+ #    bs = (Ast(x) for x in b.children)
+ #    s.pushd(Ast(name,a,*bs)) # (cons a (cons b c)) => (a b c)
+ #   elif name=='opa' and args[0].node=='seq':
+ #    s.pushd(Ast('lst',*args[0].children))
+ #   else:
+ #    s.pushd(Ast(name,*args))
+ #   debug(s,'reduce')
 
 
  def reduce_paren(s):
-  s.reduce(9)
-  if not s.o: return s.error('unmatched ")"')
+  debug(s,'rp0')
+  s.reduce(RMAX,'fun','opa')
+  if not s.o: return
+  debug(s,'rp1')
   t = s.popo()
   if not t or t[2] not in ('fun','opa'):
-   return s.error('unmatched ")"')
+   return s.error('unmatched ")" (1)')
   args = s.popd()
   fn = s.popd() if t[2]=='fun' else t[2]
   ch = args.children if args.node=='seq' else (args,) # tuple-ify for next step: *ch
@@ -161,36 +177,46 @@ class Parser:
   if (op:=s.next()) is None:
    s.setstate('done')
   elif op == ')': # (a;b) and function calls: f(x;y)
-   s.reduce_paren()
+   while s.o and s.state != 'error':
+    p,a,o = s.peeko()
+    print(s,p,a,o)
+    if o=='fun':
+     s.popo()
+     args = [s.popd() for _ in range(a)][::-1]
+     s.merge_seq(args,o)
+     return
+    s.reduce_top(*s.popo())
+   # s.reduce_match(bop['('][2])
+   # s.reduce_paren()
   elif s.next(0) in adv:
    p,a,o1 = bop[op]
    _,_,o2 = adv[s.next()]
-   s.pusho((p,a,o2+"."+o1))
+   s.pusho((p,a,f'({o2} {o1})'))
    s.setstate('unary')
   elif op in bop:
-   s.reduce(bop[op][0])
+   debug(s,'binary()')
+   s.reduce_prec(bop[op][0])
    s.pusho(bop[op])
    s.setstate('unary')
   else:
    s.error('unknown binary op')
 
-
  def parse(s):
-  debug(f' {"operators":^{OW}}   {"data":^{DW}}    state     next token')
+  debug(f' {"operators":^{OW}}   {"data":^{DW}}    state     current token')
   while s.state in ('binary','unary'):
    debug(s)
    s.unary() if s.state=='unary' else s.binary()
-  s.reduce(bop[''][0]) # reduce harder
-  if s.state == 'error':
-   return None
+  if s.state == 'error': return None
+  debug(s,'final reduce')
+  while s.o:
+   s.reduce_top(*s.popo())
+  if s.o:        return s.error(f'incomplete. {len(s.o)} items left on operator stack')
+  if len(s.d)>1: return s.error(f'incomplete. {len(s.d)} items left on data stack')
+  if s.state == 'done' and len(s.o) == 0: return s.popd()
   if s.o == [bop[';']]:
-   return Ast('shy',s.popd())#  if len(s.d)<2 else 'seq',s.popd())
-  if len(s.d)==1:
-   return s.popd()
-  debug(s,'after last reduce')
-  if s.o and s.popo()[2]=='seq':
-   return Ast('shy',*s.d) if len(s.d)==1 else Ast('seq',*s.d)
-  return s.d[0] if len(s.o)==0 and len(s.d)==1 and s.state=='done' else None
+   if len(s.d)==1: return Ast('shy',s.popd())#  if len(s.d)<2 else 'seq',s.popd())
+  if s.o and s.popo()[2]=='seq': return Ast('shy' if len(s.d)==1 else 'seq', *s.d)
+  # return s.d[0] if len(s.o)==0 and len(s.d)==1 and s.state=='done' else None
 
 
 class Ast:
@@ -198,8 +224,8 @@ class Ast:
  def __init__(s,node,*children):
   s.node = node
   s.children = children
- def __eq__(s,other):
-  return s.node==other.node and s.children==other.children
+ # def __eq__(s,other):
+ #  return s.node==other.node and s.children==other.children
  def __repr__(s):
   if not s.children and s.node != 'list': return f'{s.node}'
   return f'({s.node} {" ".join(map(repr,s.children))})' # lisp style
@@ -224,6 +250,7 @@ def test(verbose=0):
  assert repr(parse("x+f()")) ==  "(add x (f ()))"
  assert repr(parse("x;f()")) == "(seq x (f ()))"
  assert repr(parse("-a;c")) == "(seq (neg a) c)"
+ # assert repr(parse("(2-(3+))a")) == TODO
 
 if __name__ == "__main__":
  test()
