@@ -7,13 +7,15 @@ class ParseError(SyntaxError): pass
 
 bo = S('   (   *   +    -  ; ')
 bn = S('  fun mul add sub seq')
-bp = Z(bn,(3,  2,  2,  2,  3,))
+bp = Z(bn,(2,  1,  1,  1,  2,))
 bt = Z(bo,bn) # {token:name}
+
 uo = S('   (    #    - ')
-un = S('  lst count neg')
-up = Z(un,(3,   2,   2,))
+un = S('  opa count neg')
+up = Z(un,(2,   1,   1,))
 ut = Z(uo,un) # {token:name}
-ps = {**bp,**up,'prj':3} # {op:precedence}
+
+ps = {**bp,**up,'prj':2} # {op:precedence}
 pmax = max(ps.values())+1
 
 def parse(text):
@@ -24,29 +26,24 @@ def parse(text):
   sd = ' '.join(repr(x) for x in d)
   print(f'[{ss:<15}] [{sd:<20}]',*args,**kwargs)
 
- def rtop(arity):
+ def r1(op):
+  if len(d)<(arity:=2-(op in un)):
+   raise ParseError('arity')
   x,k = s.pop(),[d.pop() for _ in range(arity)][::-1]
-  debug('rtop:',x)
-  if x=='lst':
-   print('LST')
-   return d.append(Ast(x,*k[0].children))
-  if x=='fun': x,*k = k
-  if x=='seq':
-   print('SEQ')
-   k = [*(k[0].children if k[0].node==x else [k[0]]),*(k[1].children if k[1].node==x else [k[1]])]
+  debug(f'r1:({x=},{k=})')
+  if   x=='opa': x,*k = ('lst',*k[0].children,) if k[0].node=='seq' else k
+  elif x=='fun': x,k = k[0],k[1].children
+  elif x=='seq' and k[1].node==x: k = [k[0],*k[1].children]
   d.append(Ast(x,*k))
 
  def rp():
-  while s:
-   debug('rp')
-   if op:=s[-1] in ('fun','lst'): break
-   reduce(pmax)
+  while s and (op:=s[-1]) not in ('fun','lst','opa'):
+   r1(op)
+  r1(op)
 
  def reduce(p):
-  while s:
-   if ps[op:=s[-1]]>=p: break
-   if len(d)<(arity:=2-(op in un)): raise ParseError('arity')
-   rtop(arity)
+  while s and ps[op:=s[-1]]<p:
+   r1(op)
 
  def loop(t):
   i = 0
@@ -55,13 +52,12 @@ def parse(text):
     if i>=z: raise ParseError('end of tokens')
     op = t[i]
     i += 1
-    debug(op,'unary')
+    debug(op,'→')
     if op.isalnum():
      d.append(Ast(op))
      break
     elif op in uo:
-     reduce(ps[name:=ut[op]])
-     s.append(name)
+     s.append(ut[op])
      continue
     else: raise ParseError(f'unrecognized token (unary): "{op}"')
     break
@@ -70,11 +66,12 @@ def parse(text):
     if i>=z: return # end of tokens
     op = t[i]
     i += 1
-    debug(op,'binary')
+    debug(op,'↔')
     if op==')':
      rp()
      continue
     elif op in bo:
+     print(op)
      name = bt[op]
      reduce(ps[name])
      s.append(name)
@@ -86,4 +83,5 @@ def parse(text):
  loop(t)
  debug('final')
  reduce(pmax)
+ if len(d)!=1: raise ParseError(f'data stack: {d}')
  return d.pop()
