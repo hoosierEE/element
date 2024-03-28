@@ -51,7 +51,7 @@ def parse(text,verbose=0):
   i = 0
   while True:
    while True: #unary
-    if i>=z: return
+    if i>=z: return d.append(Ast('nil'))
     c = t[i]
     balance(c,bal)
     i += 1
@@ -67,6 +67,10 @@ def parse(text,verbose=0):
     elif c in uc:
      s.append(ut[c])
      continue
+    elif c in bc:
+     d.append(Ast('nil'))
+     d.append(Ast('nil'))
+     s.append(bt[c])
     else: raise ParseError(f'unrecognized token (unary): "{c}"')
     break
 
@@ -82,12 +86,13 @@ def parse(text,verbose=0):
     elif c in bc:
      reduce(ps[bt[c]])
      s.append(bt[c])
-    else: return debug(f'unrecognized token (binary): "{c}"')
+    else: raise ParseError(f'unrecognized token (binary): "{c}"')
     break
 
  bal = []
  loop(t,bal)
- if s and s[-1] in bp and len(d)==1: d.append(Ast('nil'))
+ # if s and (op:=s[-1]) and len(d)<(arity:=2-(op in up)): [d.append(Ast('nil')) for _ in range(arity)]
+ debug('final')
  reduce(pmax)
  if len(bal): raise ParseError('unbalanaced paren')
  if len(d)!=1: raise ParseError(f'data stack: {d}')
