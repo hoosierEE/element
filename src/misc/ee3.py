@@ -1,17 +1,12 @@
-'''E:E;e|e e:nve|te| t:n|v v:tA|V n:t[E]|(E)|{E}|N'''
 from Ast import Ast
-S = str.split
-Z = lambda x,y:dict(zip(x,y))
-bc = S('   (   *   +   -   ; ')
-bn = S('  fun mul add sub seq')
-bp = Z(bn,(0,  1,  1,  1,  2,)) #{name:precedence}
-bt = Z(bc,bn) #{token:name}
-uc = S('   (    #    -   ; ')
-un = S('  lst count neg nil')
-up = Z(un,(0,   1,   1,  1,)) #{name:precedence}
-ut = Z(uc,un) #{token:name}
-ps = {**bp,**up} #{op:precedence}
-pmax = max(ps.values())+1
+S,Z,NIL = str.split,lambda x,y:dict(zip(x,y)),Ast('nil')
+bc = S('   (   *   +   -   ; ')#token
+bn = S('  fun mul add sub seq')#name
+bp = Z(bn,(0,  1,  1,  1,  2,))#{binary:precedence}
+uc = S('   (    #    -   ; ')#token
+un = S('  lst count neg nil')#name
+up = Z(un,(0,   1,   1,  1,))#{unary:precedence}
+bt,ut,ps = Z(bc,bn),Z(uc,un),{**bp,**up,'app':1}#{t:n},{t:n},{n:precedence}
 class ParseError(SyntaxError): pass
 def parse(text,verbose=0):
  if not text: return Ast(text)
@@ -21,8 +16,7 @@ def parse(text,verbose=0):
   ss,sd = ' '.join(s),' '.join(repr(x) for x in d)
   print(f'[{ss:<15}] [{sd:<25}]',*args,**kwargs)
 
- def r1(op):
-  '''reduce top of stack, merging ";" as needed'''
+ def r1(op):#reduce top of stack, merging ";" as needed''
   if len(d)<(arity:=2-(op in up)): raise ParseError('arity')
   x,k = s.pop(),[d.pop() for _ in range(arity)][::-1]
   debug(f'r1:({x=},{k=})')
@@ -31,59 +25,57 @@ def parse(text,verbose=0):
   elif x=='seq' and k[1].node==x: k = [k[0],*k[1].children]
   d.append(Ast(x,*k))
 
- def reduce_paren():
-  '''reduce until matching open paren, then push AST'''
+ def reduce_paren():#reduce everything up to open paren, then push AST
   while s and ps[op:=s[-1]]: r1(op)
   r1(op)
 
- def reduce(p):
-  '''reduce ops with lower precedence (but not parens)'''
+ def reduce(p):#reduce with prec<p (but not parens)
   while s and 0<ps[op:=s[-1]]<p: r1(op)
 
  def balance(op,bal):
-  '''raise exception if parens are unbalanced'''
-  if   op in '({[': bal.append(')}]'['({['.index(op)])
-  elif op in ')}]':
-   if not bal or op!=bal.pop(): raise ParseError('unbalanced paren')
+  if op in '({[': return bal.append(')}]'['({['.index(op)])
+  if op in ')}]' and (not bal or op!=bal.pop()): raise ParseError('unbalanced paren')
 
- def loop(t,bal):
-  '''advance token, alternate unary/binary state'''
-  i = 0
+ def loop(t,bal,i=0):#advance token, update state
   while True:
-   while True: #unary
-    if i>=z: return d.append(Ast('nil'))
+   while True:#unary
+    if i>=z: return d.append(NIL)
     c = t[i]
     balance(c,bal)
     i += 1
     debug(c,'→')
     if c.isalnum(): d.append(Ast(c))
     elif c==')':
-     d.append(Ast('nil'))
+     d.append(NIL)
      reduce_paren()
     elif c==';':
-     d.append(Ast('nil'))
+     d.append(NIL)
      s.append(bt[c])
      continue
-    elif c in uc:
+    elif c in ut:
      s.append(ut[c])
      continue
-    elif c in bc:
-     d.append(Ast('nil'))
-     d.append(Ast('nil'))
+    elif c in bt:
+     d.append(NIL)
+     d.append(NIL)
      s.append(bt[c])
     else: raise ParseError(f'unrecognized token (unary): "{c}"')
     break
 
-   while True: #binary
+   while True:#binary
     if i>=z: return
     c = t[i]
     balance(c,bal)
     i += 1
     debug(c,'↔')
-    if c==')':
+    if c.isalnum():
+     s.append('app')
+     d.append(Ast(c))
+     continue
+    elif c==')':
      reduce_paren()
      continue
-    elif c in bc:
+    elif c in bt:
      reduce(ps[bt[c]])
      s.append(bt[c])
     else: raise ParseError(f'unrecognized token (binary): "{c}"')
@@ -91,9 +83,8 @@ def parse(text,verbose=0):
 
  bal = []
  loop(t,bal)
- # if s and (op:=s[-1]) and len(d)<(arity:=2-(op in up)): [d.append(Ast('nil')) for _ in range(arity)]
  debug('final')
- reduce(pmax)
+ reduce(max(ps.values())+1)
  if len(bal): raise ParseError('unbalanaced paren')
  if len(d)!=1: raise ParseError(f'data stack: {d}')
  return d.pop()
