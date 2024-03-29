@@ -1,12 +1,15 @@
 from Ast import Ast
 S,Z,NIL = str.split,lambda x,y:dict(zip(x,y)),Ast('nil')
+ac = S("   '   /   \\")
+an = S('  ech red scn')
+ap = Z(an,(2,  2,  2,))
 bc = S('   (   *   +   -   ; ')#token
 bn = S('  fun mul add sub seq')#name
 bp = Z(bn,(0,  1,  1,  1,  2,))#{binary:precedence}
 uc = S('   (    #    -   ; ')#token
 un = S('  lst count neg nil')#name
 up = Z(un,(0,   1,   1,  1,))#{unary:precedence}
-bt,ut,ps = Z(bc,bn),Z(uc,un),{**bp,**up,'app':1}#{t:n},{t:n},{n:precedence}
+bt,ut,ps = Z(bc,bn),Z(uc,un),{**bp,**up,**ap,'app':1}#{t:n},{t:n},{n:precedence}
 class ParseError(SyntaxError): pass
 def parse(text,verbose=0):
  if not text: return Ast(text)
@@ -52,14 +55,14 @@ def parse(text,verbose=0):
      d.append(NIL)
      s.append(bt[c])
      continue
+    elif c in ut and (i<z and t[i] not in ';)'):
+     s.append(ut[c])
+     continue
     elif c in bt and (i>=z or t[i] in ';)'):
      d.append(NIL)
      d.append(NIL)
      s.append(bt[c])
-    elif c in ut:
-     s.append(ut[c])
-     continue
-    else: raise ParseError(f'unrecognized token (unary): "{c}"')
+    else: raise ParseError(f'unrecognized unary operator: "{c}"')
     break
 
    while True:#binary
@@ -81,7 +84,7 @@ def parse(text,verbose=0):
      if i<z and t[i] in ';':
       d.append(NIL)
       continue
-    else: raise ParseError(f'unrecognized token (binary): "{c}"')
+    else: raise ParseError(f'unrecognized binary operator: "{c}"')
     break
 
  bal = []
