@@ -75,6 +75,11 @@ def parse(text,verbose=0):
     elif c==')':
      reduce_paren()
      continue
+    elif c in ut and c not in '(;':
+     reduce(ps[ut[c]])
+     s.append('app')
+     i -= 1
+     break
     elif c in bt:
      reduce(ps[bt[c]])
      s.append(bt[c])
