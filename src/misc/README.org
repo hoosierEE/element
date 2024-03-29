@@ -1,68 +1,73 @@
-#+title: Parsing
+* EE parsing
+Scripts in this folder are based on Eric Eidt's "[[https://erikeidt.github.io/The-Double-E-Method][Double E]]" parsing (EE for short).
+It uses bottom-up parsing like Dijkstra's [[https://wcipeg.com/wiki/Shunting_yard_algorithm][shunting yard]] algorithm.
+EE is well-suited to parsing expressions in languages with lots of operators and lots of different levels of precedence, so it may be overkill for a language like K (whose operators have equal precedence).
 
-This folder contains experiments in parsing a k-like language using Eric Eidt's "[[https://erikeidt.github.io/The-Double-E-Method][Double E]]" parsing.
-It is a bottom-up parsing method similar to Dijkstra's [[https://wcipeg.com/wiki/Shunting_yard_algorithm][shunting yard]].
-Double-E parsing ("EE" for short) is well-suited to parsing expressions in languages with lots of operators and lots of different levels of precedence, so it might be overkill for a language like K (whose operators have equal precedence).
+However, K has =;= which separates expressions so I think of it like a low-precedence operator.
+The mini-language here (let's call it k--) aims to capture K's spirit with minimal syntax.
+Even more minimal than original K?
+Sure:
 
-My implementation starts with a small set of operators that can occur in binary or unary state (or both):
-| operator | binary    | unary      |
-|----------+-----------+------------|
-| +        | add       |            |
-| -        | subtract  | negate     |
-| *        | multiply  |            |
-| #        |           | count      |
-|----------+-----------+------------|
-| (        | call      | group/list |
-| ;        | separator |            |
+- +-*#; are operators
+- single alphanumeric characters are operands (nouns)
+- () is used for grouping, lists, and function calls
+- no whitespace
+- juxtaposition is application: =(x;y)1= is =(app (x;y) 1)=, =x1= is =(app x 1)=
 
-The states let us tell apart overloaded operators, so =-x= is =(negate x)=, =x-y= is =(subtract x y)=, and =x--y= is =(subtract x (negate y))=.
+Operators can occur in binary or unary state (or both):
+| operator | binary | unary      |
+|----------+--------+------------|
+| +        | add    |            |
+| -        | sub    | neg        |
+| *        | mul    |            |
+| #        |        | count      |
+|----------+--------+------------|
+| (        | call   | group/list |
+| ;        | seq    |            |
+
+In a typical K, every operator has both unary and binary flavors, but just for fun k-- has a mix where some operators (like ~-~) come in both flavors, while others (like =#= and =+=) only have one.
+States let us tell apart overloaded operators, so =-x= is =(negate x)=, =x-y= is =(subtract x y)=, and =x--y= is =(subtract x (negate y))=.
 This mini-language overloads the meanings of =()= and =;=:
-- =a;b= forms a sequence of expressions =a= and =b=
-- =a+x;b*y= is =(seq (add a x) (multiply b y))
+- =a;b= is a sequence of operands =a= and =b=: =(seq a b)=
+- =a+x;b*y= is =(seq (add a x) (multiply b y))= due to the lower precedence of =;=
 - =(a;b;c)= is =(list a b c)= but =(a)= is simply =a=
 - =f(a;b)= is =(f a b)=
 - =f((a);(b))= is =f(a;b)=
 - =f((a;b))= is a function call with one argument: the list =(a;b)=
-- =a+(b;c)= is valid because operators work on lists
+- =a+(b;c)= and =(a;b)+c= are valid because operators work on lists
 
-These can be arbitrarily nested as in =a;f((b;c);d);(e;f;g)=, and a "missing" operand to =;= turns into a =nil= value, so =(;a)= is equivalent to =(nil;a)=.
 We do not know the number of items in a list nor the number of arguments in a function call, so we make them as big as they need to be.
 
-Here's an illustration of this parsing method and its stack effects given the input =-f(x-*b;y)+z=:
+A "missing" operand to =;= turns into a =nil= value, so =(;a)= is equivalent to =(nil;a)=.
+If any other of the operators is "missing" one or more arguments, give it a =nil= value:
+- =x+= is =(add x nil)=
+- =+= is =(add nil nil)=
+- =--= is =(neg (sub nil nil))= because the /last/ operator in a composition is binary
+- =++= is an error because =+= isn't a unary operator
 
-First we split the input into single-character tokens:
-#+begin_src
-- f ( x - * b ; y ) + z
-#+end_src
+Given input =f(2+x)-3=, parsing goes roughly like this:
+| step | operator stack    | data stack                  | next token | state |
+|------+-------------------+-----------------------------+------------+-------|
+|    1 | [               ] | [                         ] | f          | →     |
+|    2 | [               ] | [f                        ] | (          | ↔     |
+|    3 | [fun            ] | [f                        ] | 2          | →     |
+|    4 | [fun            ] | [f 2                      ] | +          | ↔     |
+|    5 | [fun add        ] | [f 2                      ] | x          | →     |
+|    6 | [fun add        ] | [f 2 x                    ] | )          | ↔     |
+|    7 | [               ] | [(f (add 2 x))            ] | -          | ↔     |
+|    8 | [sub            ] | [(f (add 2 x))            ] | 3          | →     |
+|    9 | [sub            ] | [(f (add 2 x)) 3          ] | ''         |       |
+|   10 | [               ] | [(sub (f (add 2 x)) 3)    ] | ''         |       |
 
-Then process the tokens (without backtracking) from left to right:
-| step | current token | operator stack             | data stack                                      | state  |
-|------+---------------+----------------------------+-------------------------------------------------+--------|
-| init |               | []                         | []                                              | unary  |
-|    1 | -             | [negate]                   | []                                              | unary  |
-|    2 | f             | [negate]                   | [f]                                             | binary |
-|    3 | (             | [negate fn]                | [f]                                             | unary  |
-|    4 | x             | [negate fn]                | [f x]                                           | binary |
-|    5 | -             | [negate fn subtract]       | [f x]                                           | unary  |
-|    6 | *             | [negate fn subtract first] | [f x]                                           | unary  |
-|    7 | b             | [negate fn subtract first] | [f x b]                                         | binary |
-|    8 | ;             | [negate fn]                | [f (subtract x (first b))]                      | unary  |
-|    9 | y             | [negate fn]                | [f (subtract x (first b)) y]                    | binary |
-|   10 | )             | []                         | [f (negate (f (subtract x (first b)) y))]       | binary |
-|   11 | +             | [add]                      | [(negate (f (subtract x (first b)) y))]         | unary  |
-|   12 | z             | [add]                      | [(negate (f (subtract x (first b)) y)) z]       | unary  |
-|   13 |               | []                         | [(add (negate (f (subtract x (first b)) y)) z)] | unary  |
+Parsing starts in unary state =→=.
+Binary state is written as =↔=.
+After parsing, there should be a single AST node on the data stack and an empty operator stack.
+Step 2 is trivial, simply push =f= to the data stack.
+Step 3 finds =(= in binary (=↔=) mode and so this open paren indicates a function call, so we push =fun= to the operator stack.
+Steps 4 and 5 push items to stacks.
+Something interesting happens in step 6: we see a close paren and so we *reduce* until the matching open paren.
+To *reduce*, pop one operator, pop all its operands from the data stack, then put them together into an AST node and push that new node to the data stack.
+Similarly when we get to the end of the tokens we *reduce* again until we can't anymore.
 
-After parsing, the data stack should have exactly one AST node, and the operator stack should be empty.
-
-Let's inspect step 5 more closely.
-We begin in =binary= state and the next token is =-=.
-We know which operator =-= represents because of the state: since we're in =binary= state =-= must be =subtract=.
-Next we *reduce* the data stack.
-
-To *reduce* we pop one operator, then all the operands it needs, then push an AST node for those, until the binding order of the operator on top of the operator stack is after the current token.
-In step 5,
-In k-like languages, =;= is not an operator but a special syntax for separating expressions.
-However we can model it as an operator by making its precedence level higher, meaning it evaluates later than other levels.
-
-This
+In k-like languages, =;= is treated differently from other operators and more like a syntactic element that means "separate this into two expressions".
+But you can model it as an operator simply by raising its precedence so it evaluates later than other operators.
