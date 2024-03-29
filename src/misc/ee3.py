@@ -34,7 +34,7 @@ def parse(text,verbose=0):
 
  def balance(op,bal):
   if op in '({[': return bal.append(')}]'['({['.index(op)])
-  if op in ')}]' and not bal or op!=bal.pop(): raise ParseError('unbalanced paren')
+  if op in ')}]' and (not bal or op!=bal.pop()): raise ParseError('unbalanced paren')
 
  def loop(t,bal,i=0):#advance token, update state
   while True:
@@ -52,7 +52,7 @@ def parse(text,verbose=0):
      d.append(NIL)
      s.append(bt[c])
      continue
-    elif c in bt and i>=z or t[i] in ';'):
+    elif c in bt and i>=z or t[i] in ';':
      d.append(NIL)
      d.append(NIL)
      s.append(bt[c])
