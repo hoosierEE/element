@@ -52,7 +52,7 @@ def parse(text,verbose=0):
      d.append(NIL)
      s.append(bt[c])
      continue
-    elif c in bt and (i>=z or t[i] in ';'):
+    elif c in bt and (i>=z or t[i] in ';)'):
      d.append(NIL)
      d.append(NIL)
      s.append(bt[c])
