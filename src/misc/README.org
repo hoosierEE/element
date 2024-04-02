@@ -46,18 +46,18 @@ If any other of the operators is "missing" one or more arguments, give it a =nil
 - =++= is an error because =+= isn't a unary operator
 
 Given input =f(2+x)-3=, parsing goes roughly like this:
-| step | operator stack    | data stack                  | next token | state |
-|------+-------------------+-----------------------------+------------+-------|
-|    1 | [               ] | [                         ] | f          | →     |
-|    2 | [               ] | [f                        ] | (          | ↔     |
-|    3 | [fun            ] | [f                        ] | 2          | →     |
-|    4 | [fun            ] | [f 2                      ] | +          | ↔     |
-|    5 | [fun add        ] | [f 2                      ] | x          | →     |
-|    6 | [fun add        ] | [f 2 x                    ] | )          | ↔     |
-|    7 | [               ] | [(f (add 2 x))            ] | -          | ↔     |
-|    8 | [sub            ] | [(f (add 2 x))            ] | 3          | →     |
-|    9 | [sub            ] | [(f (add 2 x)) 3          ] | ''         |       |
-|   10 | [               ] | [(sub (f (add 2 x)) 3)    ] | ''         |       |
+| step | op stack | data stack            | next token | state |
+|------+----------+-----------------------+------------+-------|
+|    1 |          |                       | f          | →     |
+|    2 |          | f                     | (          | ↔     |
+|    3 | fun      | f                     | 2          | →     |
+|    4 | fun      | f 2                   | +          | ↔     |
+|    5 | fun add  | f 2                   | x          | →     |
+|    6 | fun add  | f 2 x                 | )          | ↔     |
+|    7 |          | (f (add 2 x))         | -          | ↔     |
+|    8 | sub      | (f (add 2 x))         | 3          | →     |
+|    9 | sub      | (f (add 2 x)) 3       | ''         |       |
+|   10 |          | (sub (f (add 2 x)) 3) | ''         |       |
 
 Parsing starts in unary state =→=.
 Binary state is written as =↔=.
@@ -67,7 +67,7 @@ Step 3 finds =(= in binary (=↔=) mode and so this open paren indicates a funct
 Steps 4 and 5 push items to stacks.
 Something interesting happens in step 6: we see a close paren and so we *reduce* until the matching open paren.
 To *reduce*, pop one operator, pop all its operands from the data stack, then put them together into an AST node and push that new node to the data stack.
-Similarly when we get to the end of the tokens we *reduce* again until we can't anymore.
+Similarly, when we get to the end of the tokens we *reduce* until we can't anymore.
 
-In k-like languages, =;= is treated differently from other operators and more like a syntactic element that means "separate this into two expressions".
-But you can model it as an operator simply by raising its precedence so it evaluates later than other operators.
+In k-like languages, =;= is usually treated differently from other operators and more like a purely syntactic element that separates adjacent expressions.
+But here I am modeling it as an operator by raising its precedence so it evaluates later than other operators.
