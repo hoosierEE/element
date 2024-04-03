@@ -7,12 +7,12 @@ oparen = '({['
 cparen = ')}]'
 semico = ';'
 lookup = {
- Op('{',1): 'lambda',
- Op('{',2): 'lambda2',
+ Op('{',1): 'lam',
+ Op('{',2): 'lam2',
  Op('(',1): 'list',
- Op('(',2): 'projection',
+ Op('(',2): 'apply',
  Op('[',1): 'progn',
- Op('(',2): 'call',
+ Op('[',2): 'call',
  Op(';',2): 'seq',
 }
 def parse(text,verbose=0):
@@ -32,13 +32,13 @@ def parse(text,verbose=0):
   if not s: return
   x,k = s.pop(),[d.pop() for _ in range(op.arity)][::-1]
   x = lookup.get(x,x.name)
-  if x=='list': x,*k = (x,*k[0].children) if k[0].node=='seq' else k
-  if x=='seq' and k[1].node=='seq': k = [k[0],*k[1].children]
+  if x=='seq' and k[1].node==x: k = [k[0],*k[1].children]
+  elif x=='list': x,*k = (x,*k[0].children,) if k[0].node=='seq' else k
   debug(f'{m}:({x},{k})')
   d.append(Ast(x,*k))
 
  def reduce(until):
-  while s and s[-1]!=until: r1(s[-1])
+  while s and s[-1].name not in until+oparen: r1(s[-1],'r')
 
  def reduce_paren():#reduce everything up to open paren; push AST
   while s and (op:=s[-1]).name not in oparen: r1(op,'rp')
@@ -76,23 +76,20 @@ def parse(text,verbose=0):
     debug(c,'↔')
     if c in cparen:
      reduce_paren()
-    elif c==semico:
-     reduce(Op(c,2))
-     s.append(Op(c,2))
-     break
     elif c in adverb:
      dat = d.pop()
      print(dat.node,dat.children)
      s.append(Op(dat+c,1))
      break
     else:
+     reduce(';')
      s.append(Op(c,2))
      break
 
  loop()
  debug('done')
- reduce(Op('',0))
+ reduce('')
  r = d.pop()
- assert not len(d),"data stack should be empty"
- assert not len(s),"operator stack should be empty"
+ if len(d): print("ERROR: data stack should be empty")
+ if len(s): print("ERROR: operator stack should be empty")
  return r
