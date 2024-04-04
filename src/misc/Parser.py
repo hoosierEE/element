@@ -8,7 +8,7 @@ cparen = ')}]'
 semico = ';'
 lookup = {
  Op('{',1): 'lam',
- Op('{',2): 'lam2',
+ Op('{',2): 'lam',
  Op('(',1): 'list',
  Op('(',2): 'apply',
  Op('[',1): 'progn',
@@ -38,7 +38,8 @@ def parse(text,verbose=0):
   d.append(Ast(x,*k))
 
  def reduce(until):
-  while s and s[-1].name not in until+oparen: r1(s[-1],'r')
+  while s and s[-1].name not in oparen+cparen+until:
+   r1(s[-1],'r')
 
  def reduce_paren():#reduce everything up to open paren; push AST
   while s and (op:=s[-1]).name not in oparen: r1(op,'rp')
@@ -63,8 +64,7 @@ def parse(text,verbose=0):
      d.append(Ast(c))
      break
     elif c in adverb:
-     op = s.pop()
-     s.append(Op(op.name+c,op.arity))
+     s.append(Op(s.pop().name+c,2))
     else:
      s.append(Op(c,1))
 
@@ -76,14 +76,23 @@ def parse(text,verbose=0):
     debug(c,'↔')
     if c in cparen:
      reduce_paren()
+     if i<z and t[i] in adverb:
+      break
+    elif c in semico:
+     reduce(c)
+     s.append(Op(c,2))
+     break
+    elif c in oparen:
+     s.append(Op(c,1))#-(c!='[')))
+     break
     elif c in adverb:
-     dat = d.pop()
-     print(dat.node,dat.children)
-     s.append(Op(dat+c,1))
+     while i<z and t[i] in adverb:
+      c += t[i]
+      i += 1
+     s.append(Op(repr(d.pop())+c,1))
      break
     else:
-     reduce(';')
-     s.append(Op(c,2))
+     s.append(Op(c,2+(c in adverb)))
      break
 
  loop()
