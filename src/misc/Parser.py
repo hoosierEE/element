@@ -15,10 +15,11 @@ lookup = {
  Op('[',2):'call',#f[x]
  Op(';',2):'seq',#x;y
 }
-
+tokenize = list#TODO: implement real tokenizer
+isname = str.isalnum#TODO: cooperate with tokenizer on this
 def parse(text,verbose=0):
  if not text: return
- t,z,b,s,d = list(text),len(text),[],[],[]
+ t,z,b,s,d = tokenize(text),len(text),[],[],[]
  def debug(*args):
   if not verbose: return
   ss = ' '.join(f'{lookup.get(x,x.name)}.{x.arity}' for x in s)
@@ -44,29 +45,29 @@ def parse(text,verbose=0):
   while True:
    while True:#unary
     if i>=z: return d.append(NIL)
-    c,i = t[i],i+1;balance(c);debug(c,'→')
-    if   c in semico: d.append(NIL);s.append(Op(c,2))
-    elif c in cparen: d.append(NIL);reduce(oparen);r1(s.pop());break
+    c,i = t[i],i+1; balance(c); debug(c,'→')
+    if   c in semico: d.append(NIL); s.append(Op(c,2))
+    elif c in cparen: d.append(NIL); reduce(oparen); r1(s.pop()); break
     elif c in oparen: s.append(Op(c,1))
     elif c in adverb:
      while i<z and t[i] in adverb: c,i = c+t[i],i+1
-     if s and s[-1].name=='bind': s.pop();s.append(Op(c,3))
+     if s and s[-1].name=='bind': s.pop(); s.append(Op(c,3))
      else: s.append(Op(c,2))
-    elif c.isalnum() or i<z and t[i] in adverb: d.append(Ast(c));break
+    elif isname(c) or i<z and t[i] in adverb: d.append(Ast(c)); break
     else: s.append(Op(c,1))
 
    while True:#binary
     if i>=z: return
-    c,i = t[i],i+1;balance(c);debug(c,'↔')
-    if   c in cparen: reduce(oparen);r1(s.pop())
-    elif c in "{(": s.append(Op('bind',1));s.append(Op(c,1));break
+    c,i = t[i],i+1; balance(c); debug(c,'↔')
+    if   c in cparen: reduce(oparen); r1(s.pop())
+    elif c in "{(": s.append(Op('bind',1)); s.append(Op(c,1)); break
     elif c in adverb:
      while i<z and t[i] in adverb: c,i = c+t[i],i+1
-     if s and s[-1].name=='bind': s.pop();s.append(Op(c,3))
+     if s and s[-1].name=='bind': s.pop(); s.append(Op(c,3))
      else: s.append(Op(c,2))
      break
     else:
-     if i<z and t[i] in adverb: s.append(Op('bind',1));d.append(Ast(c))
+     if i<z and t[i] in adverb: s.append(Op('bind',1)); d.append(Ast(c))
      else: s.append(Op(c,2))
      break
 
@@ -76,3 +77,7 @@ def parse(text,verbose=0):
  r = d.pop()
  if len(d) or len(s): return print("ERROR: stacks should be empty")
  return r
+
+def test():
+ for t in 'a ab abc abcd abcde x/y +/y x+/y xf/y (f)/y (+)/y'.split():
+  print(t,'\t⇒',parse(t))
