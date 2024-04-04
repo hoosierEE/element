@@ -1,5 +1,11 @@
-from Ast import Ast
 from collections import namedtuple
+class Ast:
+ '''node and optional children'''
+ def __init__(s,node,*children):
+  s.node = node
+  s.children = children
+ def __repr__(s):
+  return f'({s.node} {" ".join(map(repr,s.children))})' if s.children else str(s.node)
 NIL = Ast('NIL')
 Op = namedtuple('Op','name arity')
 adverb = "'/\\"
@@ -59,17 +65,16 @@ def parse(text,verbose=0):
    while True:#binary
     if i>=z: return
     c,i = t[i],i+1; balance(c); debug(c,'↔')
-    if   c in cparen: reduce(oparen); r1(s.pop())
-    elif c in "{(": s.append(Op('bind',1)); s.append(Op(c,1)); break
+    if   c in cparen: reduce(oparen); r1(s.pop()); continue
+    elif c in "{(": s.append(Op('bind',1)); s.append(Op(c,1))
     elif c in adverb:
      while i<z and t[i] in adverb: c,i = c+t[i],i+1
      if s and s[-1].name=='bind': s.pop(); s.append(Op(c,3))
      else: s.append(Op(c,2))
-     break
     else:
      if i<z and t[i] in adverb: s.append(Op('bind',1)); d.append(Ast(c))
      else: s.append(Op(c,2))
-     break
+    break
 
  loop()
  debug('done')
@@ -79,5 +84,12 @@ def parse(text,verbose=0):
  return r
 
 def test():
- for t in 'a ab abc abcd abcde x/y +/y x+/y xf/y (f)/y (+)/y'.split():
-  print(t,'\t⇒',parse(t))
+ #TODO:juxtaposition:  (a)b and b(a)
+ #TODO:symbols: ``a`b
+ tests = (
+  " a ab abc abcd abcde (a) (a;b) (;b) (a;) (;) (a;;b) a;b ;b a; ; a;;b a+b a++b"
+  " [] [x] f[] f[x] f[x;y] f[;y] f[x;] f[;] f[x;;y] a+f[x]"
+  " x/y +/y x+/y xf/y (f)/y (+)/y (-a)*b"
+  " f//y xf//y (+//)'y x(+/)//'y x(af/)'y").split()
+ ml = max(map(len,tests))
+ for t in tests: print(f'{t:<{ml}} ⇒ {parse(t)}')
