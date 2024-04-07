@@ -61,6 +61,7 @@ Planned features:
 - [ ] string data type (distinct from "list of char") as in [[https://anaseto.codeberg.page/goal/][goal]]
 - [ ] =x::y= declare/update mutable variable: =a::1; a::2= (ok, =a= is mutable)
 - [ ] =x:y= declare immutable =b:1; b::2= (error, =b= is immutable!)
+- [ ] =(a+b;a:1;b:2)= is valid in K but not in Element. In Element, =e1;e2= is two expressions evaluated left to right, and a list =(e1;e2)= captures the result of each of those expressions. To replicate the K behavior use =a:1;b:2;(a+b;a;b)= or =2_(a:1;b:2;a+b;a;b)=.
 
 Aspirational features:
 - [ ] module system: =require x=, =provide x=
