@@ -20,7 +20,7 @@ def parse(t,verbose=0):
  t,z,b,s,d = list(t),len(t),[],[],[]
  def debug(*args):
   if not verbose: return
-  ss = ' '.join(f'{lookup.get(x,x.name)}‥{x.arity}' for x in s)
+  ss = ' '.join(f'{repr(Ast(x.name))}‥{x.arity}' for x in s)
   sd = ' '.join(map(str,d))
   print(f'[{ss:<19}] [{sd:<15}]',*args)
 
@@ -29,7 +29,7 @@ def parse(t,verbose=0):
   if op in cparen and (not b or op!=b.pop()): raise SyntaxError('unbalanced paren')
 
  def reduce(until):
-  while s and s[-1].name not in (repr(Ast(x)) for x in until):
+  while s and str(s[-1].name) not in until:
    r1(s.pop())
 
  def r1(x):
@@ -51,8 +51,9 @@ def parse(t,verbose=0):
   while True:
    while True:#unary
     if i>=z: return
-    c,i,n = t[i],i+1,t[i+1]if i+1<z else''; balance(c); debug(c,'→',n)
-    if   c in semico: d.append(NIL); reduce(oparen); s.append(Op(c,2))
+    c,i,n = t[i],i+1,t[i+1]if i+1<z else''; balance(c); debug(c,'→',n or 'END')
+    if   c == semico and not n: d.append(NIL)
+    if   c == semico: d.append(NIL); reduce(oparen); s.append(Op(c,2))
     elif c in cparen: d.append(NIL); debug('test'); reduce(oparen); rp(s.pop()); break
     elif c.isalnum(): d.append(Ast(c)); break
     elif c in oparen: s.append(Op(c,1));
@@ -61,12 +62,12 @@ def parse(t,verbose=0):
 
    while True:#binary
     if i>=z: return
-    c,i,n = t[i],i+1,t[i+1]if i+1<z else''; balance(c); debug(c,'↔',n)
+    c,i,n = t[i],i+1,t[i+1]if i+1<z else''; balance(c); debug(c,'↔',n or 'END')
+    if   c == semico and not n: d.append(NIL)
     if   c == semico: reduce(oparen); s.append(Op(c,2))
     elif c in cparen: reduce(oparen); rp(s.pop()); continue
     elif c in adverb: s.append(Op(Ast(c,d.pop()),1))
     elif c.isalnum(): s.append(Op(repr(d.pop()),1)); d.append(Ast(c)); continue
-    elif i==z: debug('i==z'); d.append(NIL); r1(Op(c,2))
     else: s.append(Op(c,2))
     break
 
@@ -80,8 +81,8 @@ def parse(t,verbose=0):
 
 def test():#TODO:juxtaposition:  (a)b and b(a), symbols
  x = (
-  " ab a(b) (a)b"
-  " a -a --a aa aaa a-b a-b+c (a) (a;b) (;b) (a;) (;) (a;;b) a;b ;b a; ; a;;b a+b a++b"
+  " ab a(b) (a)b abc"
+  " a -a --a a-b a-b+c (a) (a;b) (;b) (a;) (;) (a;;b) a;b ;b a; ; a;;b a+b a++b"
   " [] [x] f[] f[x] f[x;y] f[;y] f[x;] f[;] f[x;;y] a+f[x]"
   " x/y +/y x+/y xf/y (f)/y (+)/y (-a)*b"
   " f//y xf//y (+//)'y x(+/)//'y x(af/)'y"
