@@ -20,8 +20,7 @@ def parse(t:str,verbose:int=0)->Ast:
   if op in cparen and (not b or op!=b.pop()): raise SyntaxError('unbalanced paren')
 
  def reduce(until:str):
-  while s and str(s[-1].name) not in until:
-   r1(s.pop())
+  while s and str(s[-1].name) not in until: r1(s.pop())
 
  def r1(x:Op):
   k,x = [d.pop() for _ in range(x.arity)][::-1],x.name
@@ -32,7 +31,6 @@ def parse(t:str,verbose:int=0)->Ast:
   debug('r1')
 
  def rp(x:Op,n:str):#called after reduce(oparen)
-  #FIXME: {x{y}} ⇒ (lam (lam x y)) should be (lam (x (lam y)))
   y = (y.children if (y:=d.pop()).node==';' else (y,))
   if   x==Op('[',2): k = Ast('fun',d.pop(),*y)
   elif x==Op('{',3): k = Ast('lam',d.pop(),*y)
@@ -46,9 +44,7 @@ def parse(t:str,verbose:int=0)->Ast:
    while True:#unary
     if i>=z: return
     c,i,n = t[i],i+1,t[i+1]if i+1<z else''; balance(c); debug(c,'→',n or 'END')
-    if   c == semico:
-     if not n: d.append(NIL)
-     d.append(NIL); reduce(oparen); s.append(Op(c,2))
+    if   c == semico: [d.append(NIL)for _ in range(-~(not n))]; reduce(oparen); s.append(Op(c,2))
     elif c in cparen:
      d.append(NIL); debug('cparen →'); reduce(oparen); rp(s.pop(),n)
      if s and s[-1]==Op('{',1) and n!='}': s.pop(); s.append(Op('{',3)); continue
@@ -61,17 +57,14 @@ def parse(t:str,verbose:int=0)->Ast:
    while True:#binary
     if i>=z: return
     c,i,n = t[i],i+1,t[i+1]if i+1<z else''; balance(c); debug(c,'↔',n or 'END')
-    if   c == semico:
-     if not n: d.append(NIL);
-     reduce(oparen); s.append(Op(c,2))
-    elif c in cparen:
-     reduce(oparen); debug('cparen ↔'); rp(s.pop(),n);
-     if not(s and s[-1].name=='{' and n!='}'): continue
-     s.pop(); s.append(Op('{',3))
+    if   c == semico: _ if n else d.append(NIL); reduce(oparen); s.append(Op(c,2))
+    elif c in cparen: reduce(oparen); debug('cparen ↔'); rp(s.pop(),n); continue
     elif c in adverb: s.append(Op(Ast(c,d.pop()),1))
-    elif c.isalnum(): s.append(Op(repr(d.pop()),1)); d.append(Ast(c)); continue#apply
-    elif c in oparen: s.append(Op(repr(d.pop()),1)); s.append(Op(c,1))
-    else: s.append(Op(c,2))
+    elif c in '~!@#$%^&*-_=+|:,.<>?`': s.append(Op(c,2))
+    else:
+     s.append(Op(repr(d.pop()),1))
+     if c.isalnum(): d.append(Ast(c)); continue
+     s.append(Op(c,1))
     break
 
  loop()
@@ -81,6 +74,25 @@ def parse(t:str,verbose:int=0)->Ast:
   x=d.pop();d.append(Ast(d.pop(),x))
  if len(d)!=1 or len(s) or len(b): return SyntaxError("ERROR: stacks should end up empty")
  return d.pop()
+
+def unit():
+ x = """
+ input  ‥ output
+ {x{y}} ‥ (lam (x (lam y)))
+ {x(y)} ‥ (lam (x y))
+ {(x)y} ‥ (lam (x y))
+ {()}   ‥ (lam (lst NIL))
+ {()()} ‥ (lam ((lst NIL) (lst NIL)))
+        ‥ None
+ {[]()} ‥ (lam (prg NIL) (lst NIL))
+ abc    ‥ (a (b c))
+ """[1:-1].splitlines()[1:]
+ m = max(map(len,x))
+ for t,e in (map(str.strip,a.split('‥')) for a in x):
+  if str(parse(t.strip()))!=e.strip():
+   s = f'{t} ⇒ {parse(t)}'
+   print(f'{s:<{m}}  expected: {e}')
+
 
 def test():#(a)b and b(a), symbols
  x = (
