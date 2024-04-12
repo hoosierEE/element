@@ -1,7 +1,8 @@
-from collections import namedtuple
 from Ast import Ast
+import collections as C
 NIL = Ast('NIL')
-Op = namedtuple('Op','name arity')
+Op = C.namedtuple('Op','name arity')
+verb = '~!@#$%^&*-_=+|:,.<>?`'
 adverb = "'/\\"
 oparen = '({['
 cparen = ')}]'
@@ -30,7 +31,7 @@ def parse(t:str,verbose:int=0)->Ast:
   d.append(Ast(x,*k))
   debug('r1')
 
- def rp(x:Op,n:str):#called after reduce(oparen)
+ def rp(x:Op):#called after reduce(oparen)
   y = (y.children if (y:=d.pop()).node==';' else (y,))
   if   x==Op('[',2): k = Ast('fun',d.pop(),*y)
   elif x==Op('{',3): k = Ast('lam',d.pop(),*y)
@@ -45,24 +46,32 @@ def parse(t:str,verbose:int=0)->Ast:
     if i>=z: return
     c,i,n = t[i],i+1,t[i+1]if i+1<z else''; balance(c); debug(c,'→',n or 'END')
     if   c == semico: [d.append(NIL)for _ in range(-~(not n))]; reduce(oparen); s.append(Op(c,2))
-    elif c in cparen:
-     d.append(NIL); debug('cparen →'); reduce(oparen); rp(s.pop(),n)
-     if s and s[-1]==Op('{',1) and n!='}': s.pop(); s.append(Op('{',3)); continue
+    elif c in cparen:#goto binary
+     d.append(NIL); debug('cparen →'); reduce(oparen); x=s.pop(); rp(x);
      break
     elif c.isalnum(): d.append(Ast(c)); break
-    elif c in oparen: s.append(Op(c,1));
+    elif c in oparen: s.append(Op(c,1))
     elif (not n) or (n in cparen): d.append(Ast(c))
     else: s.append(Op(c,1))
 
    while True:#binary
     if i>=z: return
     c,i,n = t[i],i+1,t[i+1]if i+1<z else''; balance(c); debug(c,'↔',n or 'END')
-    if   c == semico: _ if n else d.append(NIL); reduce(oparen); s.append(Op(c,2))
-    elif c in cparen: reduce(oparen); debug('cparen ↔'); rp(s.pop(),n); continue
-    elif c in adverb: s.append(Op(Ast(c,d.pop()),1))
-    elif c in '~!@#$%^&*-_=+|:,.<>?`': s.append(Op(c,2))
+    if   c == semico: 0 if n else d.append(NIL); reduce(oparen); s.append(Op(c,2))
+    elif c in cparen:#stay binary
+     debug('cparen ↔'); reduce(oparen); x=s.pop(); rp(x)
+     continue
+    elif c in adverb:
+     k = Ast(c,d.pop())#bind adverb func
+     if s and s[-1].arity==1 and str(s[-1].name) not in verb:#move left adverb arg to d
+      d.append(Ast(s.pop().name))
+      s.append(Op(k,2))
+     else:
+      s.append(Op(Ast(c,d.pop()),1))
+    elif c in verb: s.append(Op(c,2))
     else:
-     s.append(Op(repr(d.pop()),1))
+     if s and d and s[-1].name=='{' and d[-1].node=='[': s.append(Op(';',2))
+     else: s.append(Op(d.pop(),1))
      if c.isalnum(): d.append(Ast(c)); continue
      s.append(Op(c,1))
     break
@@ -77,21 +86,22 @@ def parse(t:str,verbose:int=0)->Ast:
 
 def unit():
  x = """
- input  ‥ output
+ input  ‥ expected output
  {x{y}} ‥ (lam (x (lam y)))
  {x(y)} ‥ (lam (x y))
  {(x)y} ‥ (lam (x y))
  {()}   ‥ (lam (lst NIL))
  {()()} ‥ (lam ((lst NIL) (lst NIL)))
         ‥ None
+ {[]a}  ‥ (lam (prg NIL) a)
  {[]()} ‥ (lam (prg NIL) (lst NIL))
  abc    ‥ (a (b c))
  """[1:-1].splitlines()[1:]
  m = max(map(len,x))
- for t,e in (map(str.strip,a.split('‥')) for a in x):
-  if str(parse(t.strip()))!=e.strip():
-   s = f'{t} ⇒ {parse(t)}'
-   print(f'{s:<{m}}  expected: {e}')
+ for i,o in (map(str.strip,a.split('‥')) for a in x):
+  if str(parse(i.strip()))!=o.strip():
+   s = f'{i} ⇒ {parse(i)}'
+   print(f'{s:<{m}}  expected:{o}')
 
 
 def test():#(a)b and b(a), symbols
