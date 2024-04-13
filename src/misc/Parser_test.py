@@ -76,7 +76,7 @@ def unit(parse):
  (-a)*b    ‥ (* (- a) b)
  f//y      ‥ ((fld (fld f)) y)
  xf//y     ‥ ((fld (fld f)) x y)
- (+//)'y   ‥ (ech (fld (fld +)) y)
+ (+/)'y   ‥ (ech ((fld +) NIL) y)
  x(+/)//'y ‥ (ech (fld (fld (fld +))) x y)
  x(af/)'y  ‥ ((ech ((fld f) a NIL)) x y)
  """[1:-1].splitlines()[1:]

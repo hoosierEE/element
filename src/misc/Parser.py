@@ -45,14 +45,13 @@ def parse(t:str,verbose:int=0)->Ast:
    while True:#unary
     if i>=z: return
     c,i,n = t[i],i+1,t[i+1]if i+1<z else''; balance(c); debug(c,'→',n or 'END')
-    if   c in semico: [d.append(NIL)for _ in range(2-bool(n))]; reduce(oparen); s.append(Op(c,2))
+    if   c in semico: [d.append(NIL)for _ in(1,1)[len(n):]]; reduce(oparen); s.append(Op(c,2))
     elif c in oparen: s.append(Op(c,1))
     elif c in cparen:
-     d.append(NIL)# adverb workaround (comment me)
      debug('cparen →'); reduce(oparen); x=s.pop(); rp(x);
      if s and s[-1].name=='{' and x.name=='[' and n!='}': s.append(Op(';',2))
      else: break
-    elif c in adverb: s.append(Op(Ast(c,Ast(s.pop().name)),1))
+    elif c in adverb: x = s.pop(); s.append(Op(Ast(c,Ast(x.name)),x.arity))
     elif c.isalnum(): d.append(Ast(c)); break
     elif c in verb and n in cparen: d.append(Ast(c))
     elif (not n) or (n in cparen): d.append(Ast(c))
@@ -61,12 +60,11 @@ def parse(t:str,verbose:int=0)->Ast:
    while True:#binary
     if i>=z: return
     c,i,n = t[i],i+1,t[i+1]if i+1<z else''; balance(c); debug(c,'↔',n or 'END')
-    # if   n in cparen: d.append(NIL)# adverb workaround (uncomment me)
     if   c == semico: 0 if n else d.append(NIL); reduce(oparen); s.append(Op(c,2))
     elif c in cparen:
      debug('cparen ↔'); reduce(oparen); x=s.pop(); rp(x);
-     if s and s[-1].name=='{' and x.name=='[' and n!='}': s.append(Op(';',2)); break
-     continue
+     if not(s and s[-1].name=='{' and x.name=='[' and n!='}'): continue
+     else: s.append(Op(';',2))
     elif c in verb+'[': s.append(Op(c,2))
     elif c in adverb:
      k = Ast(c,d.pop())#bind adverb func
