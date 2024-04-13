@@ -13,7 +13,7 @@ def parse(t:str,verbose:int=0)->Ast:
  t,z,b,s,d = list(t),len(t),[],[],[]
  def debug(*args):
   if not verbose: return
-  ss = ' '.join(f'{repr(Ast(x.name))}‥{x.arity}' for x in s)
+  ss = ' '.join(f'{x.name}¨{x.arity}' for x in s)#or f'{repr(Ast(x.name))}...'
   sd = ' '.join(map(str,d))
   print(f'[{ss:<19}] [{sd:<15}]',*args)
 
@@ -24,7 +24,7 @@ def parse(t:str,verbose:int=0)->Ast:
  def reduce(until:str):
   while s and str(s[-1].name) not in until: r1(s.pop())
 
- def r1(x:Op):
+ def r1(x:Op):#reduce top of stack based on x's arity
   k,x = [d.pop() for _ in range(x.arity)][::-1],x.name
   if x==';':
    if k[1].node==x: k = [k[0],*k[1].children]
@@ -32,10 +32,9 @@ def parse(t:str,verbose:int=0)->Ast:
   d.append(Ast(x,*k))
   debug('r1')
 
- def rp(x:Op):#called after reduce(oparen)
+ def rp(x:Op):#typical use: reduce(oparen); rp(s.pop())
   y = (y.children if (y:=d.pop()).node==';' else (y,))
   if   x==Op('[',2): k = Ast('fun',d.pop(),*y)
-  elif x==Op('{',3): k = Ast('lam',d.pop(),*y)
   else: k = Ast(x.name,*y)
   if x.name=='(' and len(k.children)==1 and k.children[0]!=NIL: k = k.children[0]
   d.append(k)
@@ -46,24 +45,28 @@ def parse(t:str,verbose:int=0)->Ast:
    while True:#unary
     if i>=z: return
     c,i,n = t[i],i+1,t[i+1]if i+1<z else''; balance(c); debug(c,'→',n or 'END')
-    if   c == semico: [d.append(NIL)for _ in range(-~(not n))]; reduce(oparen); s.append(Op(c,2))
-    elif c in cparen:
-     d.append(NIL)# comment this, uncomment line 61 to fix adverbs
-     debug('cparen →'); reduce(oparen); x=s.pop(); rp(x); break
-    elif c in adverb: s.append(Op(Ast(c,Ast(s.pop().name)),1))
-    elif c.isalnum() or c in verb: d.append(Ast(c)); break
+    if   c in semico: [d.append(NIL)for _ in range(2-bool(n))]; reduce(oparen); s.append(Op(c,2))
     elif c in oparen: s.append(Op(c,1))
+    elif c in cparen:
+     d.append(NIL)# adverb workaround (comment me)
+     debug('cparen →'); reduce(oparen); x=s.pop(); rp(x);
+     if s and s[-1].name=='{' and x.name=='[' and n!='}': s.append(Op(';',2))
+     else: break
+    elif c in adverb: s.append(Op(Ast(c,Ast(s.pop().name)),1))
+    elif c.isalnum(): d.append(Ast(c)); break
+    elif c in verb and n in cparen: d.append(Ast(c))
     elif (not n) or (n in cparen): d.append(Ast(c))
     else: s.append(Op(c,1))
 
    while True:#binary
     if i>=z: return
     c,i,n = t[i],i+1,t[i+1]if i+1<z else''; balance(c); debug(c,'↔',n or 'END')
-    # if   n in cparen: d.append(NIL)# adverb workaround
+    # if   n in cparen: d.append(NIL)# adverb workaround (uncomment me)
     if   c == semico: 0 if n else d.append(NIL); reduce(oparen); s.append(Op(c,2))
-    elif c in cparen: debug('cparen ↔'); reduce(oparen); x=s.pop(); rp(x); continue
-    # elif n and n in cparen:
-    #  d.append(NIL)
+    elif c in cparen:
+     debug('cparen ↔'); reduce(oparen); x=s.pop(); rp(x);
+     if s and s[-1].name=='{' and x.name=='[' and n!='}': s.append(Op(';',2)); break
+     continue
     elif c in verb+'[': s.append(Op(c,2))
     elif c in adverb:
      k = Ast(c,d.pop())#bind adverb func
@@ -72,8 +75,7 @@ def parse(t:str,verbose:int=0)->Ast:
       d.append(Ast(s.pop().name)); s.append(Op(k,2))
      else: s.append(Op(k,1))
     else:
-     if s and d and s[-1].name=='{' and d[-1].node=='[': s.append(Op(';',2))
-     else: s.append(Op(d.pop(),1))
+     s.append(Op(d.pop(),1))
      if c.isalnum(): d.append(Ast(c)); continue
      s.append(Op(c,1))
     break

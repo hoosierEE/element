@@ -43,19 +43,19 @@ def unit(parse):
  f[;]      ‥ (fun f NIL NIL)
  f[x;;y]   ‥ (fun f x NIL y)
  a+f[x]    ‥ (+ a (fun f x))
- # +[]       ‥ (+ (prg NIL)) # comment out this test for now
- # +[x]      ‥ (+ (prg x))
- # +[x;y]    ‥ (+ (prg x y))
- # +[x;y;z]  ‥ (+ (prg x y z))
- # +[;]      ‥ (+ (prg NIL NIL))
- # +[;;]     ‥ (+ (prg NIL NIL NIL))
+ +[]       ‥ (+ (prg NIL)) # comment out this test for now
+ +[x]      ‥ (+ (prg x))
+ +[x;y]    ‥ (+ (prg x y))
+ +[x;y;z]  ‥ (+ (prg x y z))
+ +[;]      ‥ (+ (prg NIL NIL))
+ +[;;]     ‥ (+ (prg NIL NIL NIL))
  {}        ‥ (lam NIL)
  {x}       ‥ (lam x)
  {[]}      ‥ (lam (prg NIL))
  {[a]}     ‥ (lam (prg a))
  {[]a}     ‥ (lam (prg NIL) a)
  {[a]b}    ‥ (lam (prg a) b)
- {[a];b}   ‥ (lam (prg a) b)
+ {[a];b}   ‥ (lam (prg a) NIL b)
  {a;b}     ‥ (lam a b)
  {ab}      ‥ (lam (a b))
  {x/y}     ‥ (lam ((fld x) y))
@@ -82,9 +82,9 @@ def unit(parse):
  """[1:-1].splitlines()[1:]
  red,end = '\033[91m','\033[0m'
  for i,o in (map(str.strip,a.split('‥')) for a in x):
+  if i and i[0]=='#': continue
   c = ''#comment
   if '#' in o: o,c = o.split('#')
-  if i and i[0]=='#': continue
   try: x = parse(i.strip())
   except: print(f'Exception while parsing "{i}"')
   if str(x)!=o.strip():
