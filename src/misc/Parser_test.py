@@ -68,6 +68,7 @@ def unit(parse):
  {f}/y     ‥ ((fld (lam f)) y)
  x{f}/y    ‥ ((fld (lam f)) x y)
  x+/y      ‥ ((fld +) x y)
+ *+/y      ‥ (* ((fld +) y))
  xf/y      ‥ ((fld f) x y)
  (f)/y     ‥ ((fld f) y)
  x(f)/y    ‥ ((fld f) x y)
@@ -76,8 +77,8 @@ def unit(parse):
  (-a)*b    ‥ (* (- a) b)
  f//y      ‥ ((fld (fld f)) y)
  xf//y     ‥ ((fld (fld f)) x y)
- (+/)'y   ‥ (ech ((fld +) NIL) y)
- x(+/)//'y ‥ (ech (fld (fld (fld +))) x y)
+ (+/)'y    ‥ ((ech ((fld +) NIL)) y)
+ x(+/)//'y ‥ ((ech (fld (fld ((fld +) NIL)))) x y)
  x(af/)'y  ‥ ((ech ((fld f) a NIL)) x y)
  """[1:-1].splitlines()[1:]
  red,end = '\033[91m','\033[0m'
@@ -86,7 +87,7 @@ def unit(parse):
   c = ''#comment
   if '#' in o: o,c = o.split('#')
   try: x = parse(i.strip())
-  except: print(f'Exception while parsing "{i}"')
+  except: print(f'Exception while parsing "{i}"'); continue
   if str(x)!=o.strip():
    wanted = f'{i} ⇒ {o}{red}{end}'
    actual = f'{"":<{len(i)}}   {red}{x}{end}'

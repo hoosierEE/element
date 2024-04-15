@@ -71,3 +71,84 @@ Similarly, when we get to the end of the tokens we *reduce* until we can't anymo
 
 In k-like languages, =;= is usually treated differently from other operators and more like a purely syntactic element that separates adjacent expressions.
 But here I am modeling it as an operator by raising its precedence so it evaluates later than other operators.
+
+* EE parsing K
+Some K quirks that make using this parsing method more challenging:
+
+Juxtaposition is both function application and list indexing
+- =a b= ⇒ =(a b)=
+- =a b c= ⇒ =(a (b c))=
+- =(a;b)c= ⇒ =((lst a b) c)=
+
+Verbs take either 1 argument in unary/prefix form, or 2 arguments in binary/infix form
+- =+a= ⇒ =(+ a)=
+- =a+b= ⇒ =(+ a b)=
+
+Adverbs act like verbs, in the sense that =(f/)= is like a unary verb in =f/y= or a binary verb in =x f/y=
+- =f/y= ⇒ =((/ f) y)=
+- =+f/y= ⇒ =(+ ((/ f) y))=
+- =x f/y= ⇒ =((/ f) x y)=
+
+If we were to treat adverbs as verbs, then =x f/y= would be equivalent to =x (f/y)= and parse as =(x ((/ f) y))=.
+However =x f/y= should actually parse more =x(f/)y= where =f/= behaves like a single verb token.
+When parsing left-to-right, before we see =/= the only thing =x f= could be is application/indexing: =(x f)=.
+However, upon encountering the =/= token, it becomes =((/ f) x ∅)= where =∅= indicates a missing argument.
+
+Parse =x f/y=:
+| state | token | o       | d             | note |
+|-------+-------+---------+---------------+------|
+| u     | x     | []      | [x]           |      |
+| b     | f     | [x:]    | [f]           |      |
+| b     | /     | [(/ f)] | [x]           | 1    |
+| u     | y     | [(/ f)] | [x y]         |      |
+| end   |       | []      | [((/ f) x y)] |      |
+
+(1): treats =f/= as a binary verb, *and* moves =x= to =d=
+
+But what about if =x= is syntactically a verb, as in =+f/y=?
+We push =f/= as if it was a unary op:
+| state | token | o           | d               | note |
+|-------+-------+-------------+-----------------+------|
+| u     | +     | [+:]        | []              |      |
+| u     | f     | [+:]        | [f]             |      |
+| b     | /     | [+: (/ f):] | []              |    2 |
+| u     | y     | [+: (/ f):] | [y]             |      |
+| end   |       | []          | [(+ ((/ f) y))] |      |
+
+(2): treats =f/= as a unary verb
+
+Compare this to =x+/y=:
+| state | token | o       | d             | note |
+|-------+-------+---------+---------------+------|
+| u     | x     | []      | [x]           |      |
+| b     | +     | [+]     | [x]           |      |
+| u     | /     | [(/ +)] | [x]           | 3    |
+| u     | y     | [(/ +)] | [x y]         |      |
+| end   |       | []      | [((/ +) x y)] |      |
+
+(3): treats =+/= as a binary verb
+
+Compare this with the unary adverb case of =f/y=:
+| state | token | o        | d           | note |
+|-------+-------+----------+-------------+------|
+| u     | f     | []       | [f]         |      |
+| b     | /     | [(/ f):] | []          | 4    |
+| u     | y     | [(/ f):] | [y]         |      |
+| end   |       | []       | [((/ f) y)] |      |
+
+(4): treats =f/= as a unary verb
+
+And finally =x+f/y=:
+| state | token | o          | d                 | note |
+|-------+-------+------------+-------------------+------|
+| u     | x     | []         | [x]               |      |
+| b     | +     | [+]        | [x]               |      |
+| u     | f     | [+]        | [x f]             |      |
+| b     | /     | [+ (/ f):] | [x]               |    5 |
+| u     | y     | [+ (/ f):] | [x y]             |      |
+| end   |       | []         | [(+ x ((/ f) y))] |      |
+
+We treat =f/= as a unary verb when we encounter =/= in state =b= and =(s[-1].name in verb)=
+
+We treat =f/= as a binary verb when:
+- we encounter =/= in state =u= or
