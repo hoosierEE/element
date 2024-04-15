@@ -1,3 +1,20 @@
+'''
+K uses juxtaposition for application so
+(2;8)0 ⇒ (apply (lst 2 8) 0)
+f x ⇒ (apply f x)
+It also has unary and binary operators:
+2*+3 ⇒ (* 2 (+ 3))
+And adverbs:
+f/y ⇒ ((/ f) y) 1-argument form
+x f/y ⇒ ((/ f) x y) 2-argument form
+x f/'y ⇒ ((' (/ f)) x y) multiple adverbs bind together
+When parsing "x f/y" left-to-right, "x f" could be (apply x f).
+However, once you see "/" it must be the 2-argument adverb ((/ f) x …).
+Finally, there are "compositions" and "projections":
+(+-) ⇒ (+ (- … …)) (unary + applied to binary - which is waiting on both args)
+(1+) ⇒ (+ 2 …) (binary + waiting on an arg (first arg bound to 1))
+Compositions can't be just names like (p q) because that's already parsed as (apply p q).
+'''
 from Ast import Ast
 from Parser_test import unit
 import collections as C
@@ -25,7 +42,7 @@ def parse(t:str,verbose:int=0)->Ast:
   while s and str(s[-1].name) not in until: r1(s.pop())
 
  def r1(x:Op):#reduce top of stack based on x's arity
-  k,x = [d.pop() for _ in range(x.arity)][::-1],x.name
+  k,x = [d.pop()for _ in range(x.arity)][::-1],x.name
   if x==';':
    if k[1].node==x: k = [k[0],*k[1].children]
    if k[0].node==x: k = [*k[0].children,*k[1:]]
@@ -45,15 +62,18 @@ def parse(t:str,verbose:int=0)->Ast:
    while True:#unary
     if i>=z: return
     c,i,n = t[i],i+1,t[i+1]if i+1<z else''; balance(c); debug(c,'→',n or 'END')
-    if   c in semico: [d.append(NIL)for _ in(1,1)[len(n):]]; reduce(oparen); s.append(Op(c,2))
+    if c in semico:
+     [d.append(NIL)for _ in(1,1)[len(n):]]; reduce(oparen); s.append(Op(c,2))
     elif c in oparen: s.append(Op(c,1))
     elif c in cparen:
-     debug('cparen →'); reduce(oparen); x=s.pop(); rp(x);
+     # d.append(NIL);
+     debug('cparen →'); reduce(oparen);
+     x=s.pop(); rp(x);
      if s and s[-1].name=='{' and x.name=='[' and n!='}': s.append(Op(';',2))
      else: break
     elif c in adverb: x = s.pop(); s.append(Op(Ast(c,Ast(x.name)),x.arity))
     elif c.isalnum(): d.append(Ast(c)); break
-    elif c in verb and n in cparen: d.append(Ast(c))
+    elif (c in verb) and (n in cparen): d.append(Ast(c))
     elif (not n) or (n in cparen): d.append(Ast(c))
     else: s.append(Op(c,1))
 
