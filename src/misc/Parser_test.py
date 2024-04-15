@@ -43,7 +43,7 @@ def unit(parse):
  f[;]      ‥ (fun f NIL NIL)
  f[x;;y]   ‥ (fun f x NIL y)
  a+f[x]    ‥ (+ a (fun f x))
- +[]       ‥ (+ (prg NIL)) # comment out this test for now
+ +[]       ‥ (+ (prg NIL))
  +[x]      ‥ (+ (prg x))
  +[x;y]    ‥ (+ (prg x y))
  +[x;y;z]  ‥ (+ (prg x y z))
