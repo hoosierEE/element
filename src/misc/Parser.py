@@ -15,7 +15,7 @@ def parse(t:str,verbose:int=0)->Ast:#return Ast or None (print errors + info if 
   sd = ' '.join(map(str,d))
   print(f'[{ss:<19}] [{sd:<15}]',*args)
  def pad(n): n in cparen and d.append(NIL)#()⇒(lst NIL) []⇒(prg NIL) {}⇒(lam NIL)
- def balance(op):#incremental parentheses check
+ def balance(op) -> bool:#incremental parentheses check
   if op in oparen: b.append(cparen[oparen.index(op)]); return 0
   if op in cparen and (not b or op!=b.pop()): return 1
 

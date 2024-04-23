@@ -1,154 +1,44 @@
-* EE parsing
-Scripts in this folder are based on Eric Eidt's "[[https://erikeidt.github.io/The-Double-E-Method][Double E]]" parsing (EE for short).
-It uses bottom-up parsing like Dijkstra's [[https://wcipeg.com/wiki/Shunting_yard_algorithm][shunting yard]] algorithm.
-EE is well-suited to parsing expressions in languages with lots of operators and lots of different levels of precedence, so it may be overkill for a language like K (whose operators have equal precedence).
+* Python Prototype
+This folder contains experiments used to guide Element development.
+Currently the focus is on an Element interpreter, written in Python to prioritize quick iteration over run-time performance.
 
-However, K has =;= which separates expressions so I think of it like a low-precedence operator.
-The mini-language here (let's call it k--) aims to capture K's spirit with minimal syntax.
-Even more minimal than original K?
-Sure:
+** Scanner.py
+This breaks an input string into a list.
+Most list elements are strings, but some are lists of strings representing lists in the source.
+- ='2+3'= ⇒ =['2', '+', '3']=
+- ='1 2+3 4'= ⇒ =[['1', '2'], '+', ['3', '4']]=
+- ='2+`a`b``c'= ⇒ =['2', '+', ['`a', '`b', '`', '`c']]=
+In particular, the scanner recognizes /stranding/ of certain kinds of values:
+- symbols like =`a= or =`=
+- strings like ="hi world"= or =""=
+- numbers like =1= or =3.1415=
+Numbers can strand together when separated by only spaces, while strings and symbols may strand together without spaces.
+For example two strings like ="hi""world"= would strand as the list =["hi","world"]=.
 
-- +-*#; are operators
-- single alphanumeric characters are operands (nouns)
-- () is used for grouping, lists, and function calls
-- no whitespace
-- juxtaposition is application: =(x;y)1= is =(app (x;y) 1)=, =x1= is =(app x 1)=
+** Ast.py
+The Ast class defines an Ast node and its pretty-printer.
+An Ast is a =node= with zero or more additional nodes as its =children=.
 
-Operators can occur in binary or unary state (or both):
-| operator | binary | unary      |
-|----------+--------+------------|
-| +        | add    |            |
-| -        | sub    | neg        |
-| *        | mul    |            |
-| #        |        | count      |
-|----------+--------+------------|
-| (        | call   | group/list |
-| ;        | seq    |            |
+** Parser.py
+This parser is a bottom-up style parser originally inspired by [[the Double-E method]].
+However since K operators have uniform precedence the design diverged.
+A large portion of its logic deals with juxtaposition, projection, and composition within the context of the usual application of values to operators, function calls, and parentheses.
+- juxtaposition
+  + =a b c= ⇒ =(a (b c))=
+  + =()()= ⇒ =((lst NIL) (lst NIL))=
+  + =f[x][y]= ⇒ =((f (prg x)) (prg y))=
+  + =a 2-b 3= ⇒ =(a (- 2 (b 3)))=
+- projection
+  + =2+= ⇒ =(prj + 2)=
+  + =("a",)= ⇒ =(prj , "a")=
+- composition
+  + =+-= ⇒ =(cmp + (prj -))= (note that this composition ends with a 1-argument =prj=)
+  + =a+*b-= ⇒ =(cmp (prj + a) (cmp * (prj - b)))=
+- normal application
+  + =a+*b-1= ⇒ =(+ a (* (- b 1)))=
+  + =+-^a= ⇒ =(+ (- (^ a)))=
+The parser makes no attempt to validate data types.
 
-In a typical K, every operator has both unary and binary flavors, but just for fun k-- has a mix where some operators (like ~-~) come in both flavors, while others (like =#= and =+=) only have one.
-States let us tell apart overloaded operators, so =-x= is =(negate x)=, =x-y= is =(subtract x y)=, and =x--y= is =(subtract x (negate y))=.
-This mini-language overloads the meanings of =()= and =;=:
-- =a;b= is a sequence of operands =a= and =b=: =(seq a b)=
-- =a+x;b*y= is =(seq (add a x) (multiply b y))= due to the lower precedence of =;=
-- =(a;b;c)= is =(list a b c)= but =(a)= is simply =a=
-- =f(a;b)= is =(f a b)=
-- =f((a);(b))= is =f(a;b)=
-- =f((a;b))= is a function call with one argument: the list =(a;b)=
-- =a+(b;c)= and =(a;b)+c= are valid because operators work on lists
-
-We do not know the number of items in a list nor the number of arguments in a function call, so we make them as big as they need to be.
-
-A "missing" operand to =;= turns into a =nil= value, so =(;a)= is equivalent to =(nil;a)=.
-If any other of the operators is "missing" one or more arguments, give it a =nil= value:
-- =x+= is =(add x nil)=
-- =+= is =(add nil nil)=
-- =--= is =(neg (sub nil nil))= because the /last/ operator in a composition is binary
-- =++= is an error because =+= isn't a unary operator
-
-Given input =f(2+x)-3=, parsing goes roughly like this:
-| step | op stack | data stack            | next token | state |
-|------+----------+-----------------------+------------+-------|
-|    1 |          |                       | f          | →     |
-|    2 |          | f                     | (          | ↔     |
-|    3 | fun      | f                     | 2          | →     |
-|    4 | fun      | f 2                   | +          | ↔     |
-|    5 | fun add  | f 2                   | x          | →     |
-|    6 | fun add  | f 2 x                 | )          | ↔     |
-|    7 |          | (f (add 2 x))         | -          | ↔     |
-|    8 | sub      | (f (add 2 x))         | 3          | →     |
-|    9 | sub      | (f (add 2 x)) 3       | ''         |       |
-|   10 |          | (sub (f (add 2 x)) 3) | ''         |       |
-
-Parsing starts in unary state =→=.
-Binary state is written as =↔=.
-After parsing, there should be a single AST node on the data stack and an empty operator stack.
-Step 2 is trivial, simply push =f= to the data stack.
-Step 3 finds =(= in binary (=↔=) mode and so this open paren indicates a function call, so we push =fun= to the operator stack.
-Steps 4 and 5 push items to stacks.
-Something interesting happens in step 6: we see a close paren and so we *reduce* until the matching open paren.
-To *reduce*, pop one operator, pop all its operands from the data stack, then put them together into an AST node and push that new node to the data stack.
-Similarly, when we get to the end of the tokens we *reduce* until we can't anymore.
-
-In k-like languages, =;= is usually treated differently from other operators and more like a purely syntactic element that separates adjacent expressions.
-But here I am modeling it as an operator by raising its precedence so it evaluates later than other operators.
-
-* EE parsing K
-Some K quirks that make using this parsing method more challenging:
-
-Juxtaposition is both function application and list indexing
-- =a b= ⇒ =(a b)=
-- =a b c= ⇒ =(a (b c))=
-- =(a;b)c= ⇒ =((lst a b) c)=
-
-Verbs take either 1 argument in unary/prefix form, or 2 arguments in binary/infix form
-- =+a= ⇒ =(+ a)=
-- =a+b= ⇒ =(+ a b)=
-
-Adverbs act like verbs, in the sense that =(f/)= is like a unary verb in =f/y= or a binary verb in =x f/y=
-- =f/y= ⇒ =((/ f) y)=
-- =+f/y= ⇒ =(+ ((/ f) y))=
-- =x f/y= ⇒ =((/ f) x y)=
-
-If we were to treat adverbs as verbs, then =x f/y= would be equivalent to =x (f/y)= and parse as =(x ((/ f) y))=.
-However =x f/y= should actually parse more =x(f/)y= where =f/= behaves like a single verb token.
-When parsing left-to-right, before we see =/= the only thing =x f= could be is application/indexing: =(x f)=.
-However, upon encountering the =/= token, it becomes =((/ f) x ∅)= where =∅= indicates a missing argument.
-
-Parse =x f/y=:
-| state | token | o       | d             | note |
-|-------+-------+---------+---------------+------|
-| u     | x     | []      | [x]           |      |
-| b     | f     | [x:]    | [f]           |      |
-| b     | /     | [(/ f)] | [x]           | 1    |
-| u     | y     | [(/ f)] | [x y]         |      |
-| end   |       | []      | [((/ f) x y)] |      |
-
-(1): treats =f/= as a binary verb, *and* moves =x= to =d=
-
-But what about if =x= is syntactically a verb, as in =+f/y=?
-We push =f/= as if it was a unary op:
-| state | token | o           | d               | note |
-|-------+-------+-------------+-----------------+------|
-| u     | +     | [+:]        | []              |      |
-| u     | f     | [+:]        | [f]             |      |
-| b     | /     | [+: (/ f):] | []              |    2 |
-| u     | y     | [+: (/ f):] | [y]             |      |
-| end   |       | []          | [(+ ((/ f) y))] |      |
-
-(2): treats =f/= as a unary verb
-
-Compare this to =x+/y=:
-| state | token | o       | d             | note |
-|-------+-------+---------+---------------+------|
-| u     | x     | []      | [x]           |      |
-| b     | +     | [+]     | [x]           |      |
-| u     | /     | [(/ +)] | [x]           | 3    |
-| u     | y     | [(/ +)] | [x y]         |      |
-| end   |       | []      | [((/ +) x y)] |      |
-
-(3): treats =+/= as a binary verb
-
-Compare this with the unary adverb case of =f/y=:
-| state | token | o        | d           | note |
-|-------+-------+----------+-------------+------|
-| u     | f     | []       | [f]         |      |
-| b     | /     | [(/ f):] | []          | 4    |
-| u     | y     | [(/ f):] | [y]         |      |
-| end   |       | []       | [((/ f) y)] |      |
-
-(4): treats =f/= as a unary verb
-
-And finally =x+f/y=:
-| state | token | o          | d                 | note |
-|-------+-------+------------+-------------------+------|
-| u     | x     | []         | [x]               |      |
-| b     | +     | [+]        | [x]               |      |
-| u     | f     | [+]        | [x f]             |      |
-| b     | /     | [+ (/ f):] | [x]               |    5 |
-| u     | y     | [+ (/ f):] | [x y]             |      |
-| end   |       | []         | [(+ x ((/ f) y))] |      |
-
-We treat =f/= as a unary verb when we encounter =/= in state =b= and =(s[-1].name in verb)=
-
-We treat =f/= as a binary verb when:
-- we encounter =/= in state =u= or
+** unit_test.py
+This file aims to include unit tests for the major parts of the prototype.
+Currently it has about 100 parser tests comparing a string input with corresponding Ast output.
