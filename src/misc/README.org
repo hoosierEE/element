@@ -41,4 +41,4 @@ The parser makes no attempt to validate data types.
 
 ** unit_test.py
 This file aims to include unit tests for the major parts of the prototype.
-Currently it has about 100 parser tests comparing a string input with corresponding Ast output.
+Currently it has about 100 parser tests comparing a string input with expected Ast output.
