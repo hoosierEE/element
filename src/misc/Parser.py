@@ -1,33 +1,20 @@
 #parser loosely based on https://erikeidt.github.io/The-Double-E-Method
 #still uses 2 stacks but omits precedence
-import collections as C
+from Ast import Ast
 from Scanner import Scanner
-class Ast:#(node children*)
- def __init__(s,*args): s.node,*s.children = args
- def __repr__(s):
-  n = dict(zip("{[(;/\\'",'lam prg lst seq fld scn ech'.split())).get(s.node,s.node)
-  return f'({n} {" ".join(map(repr,s.children))})' if s.children else str(n)
-
+import collections as C
 NIL,Op = Ast('NIL'),C.namedtuple('Op','name arity')
-verb   = [*'~!@#$%^&*-_=+|:,.<>?','']
-adverb = [*"'/\\",'']
-cparen = [*')}]','']
-oparen = [*'({[','']
-semico = [';','']
-
+verb = (*'~!@#$%^&*-_=+|:,.<>?','')
+adverb,cparen,oparen,semico = (*"'/\\",''),(*')}]',''),(*'({[',''),(';','')
 def parse(t:str,verbose:int=0)->Ast:#return Ast or None (print errors + info if verbose)
- if not t: return
- t,b,s,d = Scanner(t).t,[],[],[]
- z = len(t)
-
+ if not (t:=Scanner(t).t): return
+ z,b,s,d = len(t),[],[],[]
  def debug(*args):#optional pretty print
   if not verbose: return
   ss = ' '.join(f'{x.name}{"⁰¹²"[x.arity]}' for x in s)
   sd = ' '.join(map(str,d))
   print(f'[{ss:<19}] [{sd:<15}]',*args)
-
  def pad(n): n in cparen and d.append(NIL)#()⇒(lst NIL) []⇒(prg NIL) {}⇒(lam NIL)
-
  def balance(op):#incremental parentheses check
   if op in oparen: b.append(cparen[oparen.index(op)]); return 0
   if op in cparen and (not b or op!=b.pop()): return 1

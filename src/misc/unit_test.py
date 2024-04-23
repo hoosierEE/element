@@ -1,5 +1,5 @@
 from Parser import parse
-def unit(parse):
+def test_parser(parser):
  x = """
  input     ⇒ expected output (in s-expr form)
            ⇒ None
@@ -118,7 +118,7 @@ def unit(parse):
   if i and i[0]=='#': continue
   c = ''#comment
   if '#' in o: o,c = o.split('#')
-  try: o,x = o.strip(),parse(i.strip())
+  try: o,x = o.strip(),parser(i.strip())
   except: print(f'Exception while parsing "{i}"'); continue
   if str(x)==o: continue
   wanted = f'{i} ⇒ {o}{red}{end}'

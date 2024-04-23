@@ -12,10 +12,8 @@ class Scanner:
   s.t = s.tokenize()
  def peek(s): return s.next(0)
  def next(s,inc=1):
-  if s.i>=s.z: return ''
-  x = s.s[s.i]
-  s.i += inc
-  return x
+  if s.i>=s.z: return''
+  x = s.s[s.i]; s.i += inc; return x
 
  def tokenize(s):
   isnumeric = lambda:s.peek().isnumeric()
@@ -57,5 +55,4 @@ class Scanner:
    elif issymbol(): ts.append(strand(issymbol,symboly))
    elif s.peek().isalpha(): ts.append(namey(s.next()))
    else: ts.append(s.next())
-
   return ts
