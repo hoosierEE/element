@@ -10,10 +10,12 @@ Most list elements are strings, but some are lists of strings representing lists
 - ='2+`a`b``c'= ⇒ =['2', '+', ['`a', '`b', '`', '`c']]=
 In particular, the scanner recognizes /stranding/ of certain kinds of values:
 - symbols like =`a= or =`=
-- strings like ~"hi world"~ or ="x"=
+- strings like "hi world" or "x"
 - numbers like =1= or =3.1415=
-Numbers can strand together when separated by only spaces, while strings and symbols may strand together without spaces.
-For example two strings like ="hi""world"= would strand as the list =["hi","world"]=.
+Numbers form strands when separated by spaces, while strings and symbols may strand together without spaces.
+Stranding two strings without spaces as in "hi""world" results in the list =["hi","world"]=.
+The /strand/ concept in array languages is simply a minimal syntax for creating 1-dimensional lists.
+Creating nested list literals requires parentheses as in =(1;(2;3);4)=.
 
 ** Ast.py
 The Ast class defines an Ast node and its pretty-printer.
