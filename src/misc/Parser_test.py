@@ -1,3 +1,4 @@
+from Parser import parse
 def unit(parse):
  x = """
  input     ⇒ expected output (in s-expr form)
@@ -35,6 +36,7 @@ def unit(parse):
  (f)/y     ⇒ ((fld f) y)
  *+/y      ⇒ (* ((fld +) y))
  +/y       ⇒ ((fld +) y)
+ f[x]/y    ⇒ ((fld (f (prg x))) y)
  +[;;]     ⇒ (+ (prg NIL NIL NIL))
  +[;]      ⇒ (+ (prg NIL NIL))
  +[]       ⇒ (+ (prg NIL))
@@ -95,6 +97,8 @@ def unit(parse):
  {f[x]}    ⇒ (lam (f (prg x)))
  {f}/y     ⇒ ((fld (lam f)) y)
  {x(y)}    ⇒ (lam (x y))
+ {af[x]/b} ⇒ (lam ((fld (f (prg x))) a b))
+ {a/b}     ⇒ (lam ((fld a) b))
  {x/y}     ⇒ (lam ((fld x) y))
  {x{y}}    ⇒ (lam (x (lam y)))
  {x}       ⇒ (lam x)

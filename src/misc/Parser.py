@@ -1,4 +1,3 @@
-from Parser_test import unit
 import collections as C
 class Ast:#(node [children])
  def __init__(s,*args): s.node,*s.children = args
@@ -20,6 +19,7 @@ def parse(t:str,verbose:int=0)->Ast:
  def balance(op):
   if op in oparen: return b.append(cparen[oparen.index(op)])
   if op in cparen and (not b or op!=b.pop()): raise SyntaxError('unbalanced paren')
+
  def reduce(until:str):
   while s and str(s[-1].name) not in until: rt(*s.pop())
 
@@ -42,8 +42,9 @@ def parse(t:str,verbose:int=0)->Ast:
  def rp(x:Op):#(r)educe (p)aren, e.g: reduce(oparen); rp(s.pop())
   k = Ast(x.name,*(y.children if (y:=d.pop()).node==';' else (y,)))
   if x.name=='(' and len(k.children)==1 and k.children[0]!=NIL: k = k.children[0]
+  if x.name=='[' and x.arity==2: k = Ast(d.pop(),k)
   d.append(k)
-  debug('rp')
+  debug('rp',x,k)
 
  def loop(i=0):
   while True:
@@ -53,34 +54,34 @@ def parse(t:str,verbose:int=0)->Ast:
     if   c in semico: d.append(NIL); pad(n); reduce(oparen); s.append(Op(c,2))
     elif c in oparen: pad(n); s.append(Op(c,1))
     elif c in cparen:
-     reduce(oparen); rp(x:=s.pop())
-     if s and s[-1].name=='{' and x.name=='[' and n!='}': s.append(Op(';',2))#{[]..} except {[]} (λ(prg))
+     reduce(oparen); rp(x:=s.pop());
+     if s and s[-1].name=='{' and x.name=='[' and n!='}': s.append(Op(';',2))
      else: break
     elif c in adverb: x = s.pop(); s.append(Op(Ast(c,Ast(x.name)),x.arity)); x.arity==2 and pad(n)
     elif c.isalnum(): d.append(Ast(c)); break
     elif c in verb and n in cparen+semico:
-     if s and s[-1].name in oparen: d.append(Ast(c))
-     else: rq(Ast('prj',Ast(c)))
-     break
+     d.append(Ast(c)) if s and s[-1].name in oparen else rq(Ast('prj',Ast(c))); break
+    elif c in verb and n in adverb: d.append(Ast(c)); break
     else: s.append(Op(c,1))
 
    while True:#binary
     if i>=z: return
     c,i,n = t[i],i+1,t[i+1]if i+1<z else''; balance(c); debug(c,'↔',n or 'END')
     if   c in semico: reduce(oparen); pad(n); s.append(Op(c,2))
+    elif c in oparen: c in "({" and s.append(Op(d.pop(),2)); pad(n); s.append(Op(c,2))
     elif c in cparen:
-     reduce(oparen); rp(x:=s.pop());
-     if s and s[-1].name=='{' and x.name=='[' and n!='}':
-      s.append(Op(';',2))
-     else:
-      continue
+     reduce(oparen); rp(x:=s.pop())
+     if s and s[-1].name=='{' and x.name=='[' and n!='}': s.append(Op(';',2))
+     else: continue
     elif c in adverb:
      k = Ast(c,d.pop())#bind adverb to whatever
      while n and n in adverb: k,i,n = Ast(n,k),i+1,t[i+1]if i+1<z else''
      if s:
-      if str(s[-1].name) in verb+oparen: s.append(Op(k,1))
+      if str(s[-1].name) in verb+oparen:
+       if d: s.append(Op(d.pop(),1))
+       s.append(Op(k,1))
       else: d.append(Ast(s.pop().name)); s.append(Op(k,2))
-     else: s.append(Op(k,1))
+     else: s.append(Op(k,2))
      if s[-1].arity==2: pad(n)
     elif c in verb:
      if n in cparen+semico: rq(Ast('prj',Ast(c),d.pop())); continue
