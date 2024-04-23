@@ -8,6 +8,8 @@ def unit(parse):
  +-        ⇒ (cmp + (prj -))
  (+)-      ⇒ (prj - +)
  +(-)      ⇒ (+ -)
+ 1 2+3 4   ⇒ (+ (arr 1 2) (arr 3 4))
+ 1 2+``a   ⇒ (+ (arr 1 2) (arr ` `a))
  a+-       ⇒ (cmp (prj + a) (prj -))
  *a+-      ⇒ (cmp * (cmp (prj + a) (prj -)))
  +-*       ⇒ (cmp + (cmp - (prj *)))
