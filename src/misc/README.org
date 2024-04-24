@@ -43,13 +43,18 @@ The job of the parser is to disambiguate the number of arguments to operators.
 For example =+2*b-= contains 3 operators ("+", "*", and "-"), each of which has either a unary/prefix meaning or a binary/infix meaning depending on context.
 However, the above results in the AST =(cmp + (cmp (prj * 2) (prj - b)))= because the "rule" is that a trailing operator is infix, and so we can recognize the suffix =b-= as a projection =(prj - b)=.
 From there we work backward and see =*=, which is infix because it has a left operand =2=, resulting in another projection =(prj * 2)=.
-To emphasize the projections we could rewrite the original expression as =+(2*)(b-)=.
-Another "rule" is that juxtaposition is application, so =(2*)(b-)= applies =(b-)= as an argument to =(2*)=.
-It would be possible to create an AST like =((2*) (b-))= to emphasize application, but we want to bubble up the fact that =-= is partially applied all the way back to the root of the AST.
-Finally the leading =+= can only be prefix because it has no left argument, and again we preserve the partial application information by making the root node a =cmp=.
+
+The goal of the parser in this situation is to preserve the fact that =-= is missing an argument, so any time a =prj= node is composed with other operators, the parent node becomes a composition.
+These two projections form a composition, and finally the leading =+= must be a prefix operator because it has no left argument.
+Again we preserve the partial application information by making the root node a =cmp=.
 
 One thing the parser does not do is validate the shape or type of arguments to operands.
 For example ="ab"/3= is an invalid expression in the language but parses as =((fld "ab") 3)=.
+The evaluator will handle this task.
+
+** Eval.py
+TODO
+
 ** unit_test.py
 This file aims to include unit tests for the major parts of the prototype.
 Currently it has about 100 parser tests comparing a string input with expected Ast output.
