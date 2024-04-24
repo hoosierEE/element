@@ -18,29 +18,38 @@ The /strand/ concept in array languages is simply a minimal syntax for creating 
 Creating nested list literals requires parentheses as in =(1;(2;3);4)=.
 
 ** Ast.py
-The Ast class defines an Ast node and its pretty-printer.
-An Ast is a =node= with zero or more additional nodes as its =children=.
+The =Ast= class defines an abstract syntax tree (AST) node and its pretty-printer.
+An =Ast= node has a name and zero or more additional nodes as its =children=.
 
 ** Parser.py
 This parser is a bottom-up style parser originally inspired by [[the Double-E method]].
-However since K operators have uniform precedence the design diverged.
-A large portion of its logic deals with juxtaposition, projection, and composition within the context of the usual application of values to operators, function calls, and parentheses.
-- juxtaposition
+After a while I removed the operator precedence logic from this parser since K operators have uniform precedence.
+A large portion of this parser now deals with juxtaposition, projection, and composition within the context of the usual application of values to operators, function calls, and parentheses.
+- juxtaposition (implied application)
   + =a b c= ⇒ =(a (b c))=
   + =()()= ⇒ =((lst NIL) (lst NIL))=
   + =f[x][y]= ⇒ =((f (prg x)) (prg y))=
   + =a 2-b 3= ⇒ =(a (- 2 (b 3)))=
-- projection
+- projection (partial application)
   + =2+= ⇒ =(prj + 2)=
-  + =("a",)= ⇒ =(prj , "a")=
+  + ="a",= ⇒ =(prj , "a")=
 - composition
-  + =+-= ⇒ =(cmp + (prj -))= (note that this composition ends with a 1-argument =prj=)
+  + =+-= ⇒ =(cmp + (prj -))= (note =-= treated as a partial application with both arguments missing)
   + =a+*b-= ⇒ =(cmp (prj + a) (cmp * (prj - b)))=
-- normal application
+- infix and prefix application
   + =a+*b-1= ⇒ =(+ a (* (- b 1)))=
   + =+-^a= ⇒ =(+ (- (^ a)))=
-The parser makes no attempt to validate data types.
+The job of the parser is to disambiguate the number of arguments to operators.
+For example =+2*b-= contains 3 operators ("+", "*", and "-"), each of which has either a unary/prefix meaning or a binary/infix meaning depending on context.
+However, the above results in the AST =(cmp + (cmp (prj * 2) (prj - b)))= because the "rule" is that a trailing operator is infix, and so we can recognize the suffix =b-= as a projection =(prj - b)=.
+From there we work backward and see =*=, which is infix because it has a left operand =2=, resulting in another projection =(prj * 2)=.
+To emphasize the projections we could rewrite the original expression as =+(2*)(b-)=.
+Another "rule" is that juxtaposition is application, so =(2*)(b-)= applies =(b-)= as an argument to =(2*)=.
+It would be possible to create an AST like =((2*) (b-))= to emphasize application, but we want to bubble up the fact that =-= is partially applied all the way back to the root of the AST.
+Finally the leading =+= can only be prefix because it has no left argument, and again we preserve the partial application information by making the root node a =cmp=.
 
+One thing the parser does not do is validate the shape or type of arguments to operands.
+For example ="ab"/3= is an invalid expression in the language but parses as =((fld "ab") 3)=.
 ** unit_test.py
 This file aims to include unit tests for the major parts of the prototype.
 Currently it has about 100 parser tests comparing a string input with expected Ast output.
