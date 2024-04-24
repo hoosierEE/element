@@ -92,7 +92,7 @@ Some [[https://github.com/doctest/doctest/tree/master/doc/markdown#reference][do
 [0/3]
 - [-] practice (Python) implementation
   - [X] lex/scan/tokenize
-  - [ ] parse
+  - [X] parse
   - [ ] codegen
 - [-] serious (C++/CUDA) implementation
   - [X] lex/scan/tokenize
