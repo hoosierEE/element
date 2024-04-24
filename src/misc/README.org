@@ -5,9 +5,9 @@ Currently the focus is on an Element interpreter, written in Python to prioritiz
 ** Scanner.py
 This breaks an input string into a list.
 Most list elements are strings, but some are lists of strings representing lists in the source.
-- ='2+3'= ⇒ =['2', '+', '3']=
-- ='1 2+3 4'= ⇒ =[['1', '2'], '+', ['3', '4']]=
-- ='2+`a`b``c'= ⇒ =['2', '+', ['`a', '`b', '`', '`c']]=
+- =2+3= ⇒ =['2', '+', '3']=
+- =1 2+3 4= ⇒ =[['1', '2'], '+', ['3', '4']]=
+- =2+`a`b``c= ⇒ =['2', '+', ['`a', '`b', '`', '`c']]=
 In particular, the scanner recognizes /stranding/ of certain kinds of values:
 - symbols like =`a= or =`=
 - strings like "hi world" or "x"
