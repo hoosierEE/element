@@ -5,8 +5,8 @@ NIL,Op = Ast('NIL'),C.namedtuple('Op','name arity')
 verb = (*'~!@#$%^&*-_=+|:,.<>?','')
 adverb,cparen,oparen,semico = (*"'/\\",''), (*')}]',''), (*'({[',''), (*';\n','')
 
-def parse(t:str,verbose:int=0)->Ast:#return Ast or None (print errors + info if verbose)
- if not (t:=Scanner(t)): return
+def Parse(t:str,verbose:int=0)->Ast:#return Ast or None (print errors + info if verbose)
+ if not (t:=Scan(t)): return
  z,b,s,d = len(t),[],[],[]
  def debug(*args):#optional pretty print
   if not verbose: return
@@ -29,10 +29,13 @@ def parse(t:str,verbose:int=0)->Ast:#return Ast or None (print errors + info if 
 
  def rt(x,arity):#(r)educe (t)op of stack based on x's arity
   k = [d.pop() for _ in range(min(len(d),arity))][::-1]
-  if x==';':
+  if x in semico:
    if   len(k)>1 and k[1].node==x: k = [k[0],*k[1].children]
    elif len(k)>0 and k[0].node==x: k = [*k[0].children,*k[1:]]
-  d.append(Ast(x,*k)); debug('rt',x,k)
+  if type(x)==str and x.isalnum(): d.append(Ast('app',Ast(x),*k))
+  elif type(x)==Ast:               d.append(Ast('app',x,*k))
+  else:                            d.append(Ast(x,*k))
+  debug('rt',x,k)
 
  def rp(x:Op):#(r)educe (p)aren, e.g: reduce(oparen); rp(s.pop())
   k = Ast(x.name,*(y.children if (y:=d.pop()).node==';' else (y,)))
@@ -49,6 +52,9 @@ def parse(t:str,verbose:int=0)->Ast:#return Ast or None (print errors + info if 
     c,i,n = t[i],i+1,nn(i); debug(c,'→',n or 'END')
     if balance(c): return i
     if type(c)==list: d.append(Ast('arr',*map(Ast,c))); break
+    if c==' ':
+     if n=='/': return
+     continue
     if   c in semico: d.append(NIL); pad(n); reduce(oparen); s.append(Op(';',2))
     elif c in oparen: pad(n); s.append(Op(c,1))
     elif c in cparen:
@@ -66,7 +72,7 @@ def parse(t:str,verbose:int=0)->Ast:#return Ast or None (print errors + info if 
     if i>=z: return
     c,i,n = t[i],i+1,nn(i); debug(c,'↔',n or 'END')
     if balance(c): return i
-    if type(c)==list: d.append(Ast('arr',*map(Ast,c))); continue
+    # if type(c)==list: d.append(Ast('arr',*map(Ast,c))); continue
     if c==' ':
      if n=='/': return
      continue
@@ -88,7 +94,7 @@ def parse(t:str,verbose:int=0)->Ast:#return Ast or None (print errors + info if 
      if n in cparen+semico: rq(Ast('prj',Ast(c),d.pop())); continue
      else: s.append(Op(c,2))
     else:
-     s.append(Op(str(d.pop()),1))
+     s.append(Op(d.pop(),1))
      if noun(c) or c[0] in '`"': d.append(Ast(c)); continue
      pad(n); s.append(Op(c,1))
     break
