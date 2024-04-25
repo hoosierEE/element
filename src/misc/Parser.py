@@ -1,19 +1,19 @@
-#parser loosely based on https://erikeidt.github.io/The-Double-E-Method
-#still uses 2 stacks but omits precedence
-from Ast import Ast
-from Scanner import Scanner
+from Ast import *
+from Scanner import *
 import collections as C
 NIL,Op = Ast('NIL'),C.namedtuple('Op','name arity')
 verb = (*'~!@#$%^&*-_=+|:,.<>?','')
-adverb,cparen,oparen,semico = (*"'/\\",''),(*')}]',''),(*'({[',''),(';','')
+adverb,cparen,oparen,semico = (*"'/\\",''), (*')}]',''), (*'({[',''), (*';\n','')
+
 def parse(t:str,verbose:int=0)->Ast:#return Ast or None (print errors + info if verbose)
- if not (t:=Scanner(t).t): return
+ if not (t:=Scanner(t)): return
  z,b,s,d = len(t),[],[],[]
  def debug(*args):#optional pretty print
   if not verbose: return
-  ss = ' '.join(f'{x.name}{"⁰¹²"[x.arity]}' for x in s)
-  sd = ' '.join(map(str,d))
-  print(f'[{ss:<19}] [{sd:<15}]',*args)
+  R = lambda x:'LF' if x=='\n' else str(x)
+  ss = ' '.join(f'{R(x.name)}{"⁰¹²"[x.arity]}' for x in s)
+  sd = ' '.join(map(R,d))
+  print(f'[{ss:<19}] [{sd:<15}]',*map(R,args))
  def pad(n): n in cparen and d.append(NIL)#()⇒(lst NIL) []⇒(prg NIL) {}⇒(lam NIL)
  def balance(op) -> bool:#incremental parentheses check
   if op in oparen: b.append(cparen[oparen.index(op)]); return 0
@@ -42,20 +42,21 @@ def parse(t:str,verbose:int=0)->Ast:#return Ast or None (print errors + info if 
 
  def loop(i=0) -> int|None:#return error token index or None
   nn = lambda i:(t[i+1] if type(t[i+1])==str else 1) if i+1<z else ''
+  noun = lambda x:x.replace('.','').isalnum()
   while True:
    while True:#unary
     if i>=z: return
-    c,i,n = t[i],i+1,nn(i); debug(c,'→',repr(n) or 'END')
+    c,i,n = t[i],i+1,nn(i); debug(c,'→',n or 'END')
     if balance(c): return i
     if type(c)==list: d.append(Ast('arr',*map(Ast,c))); break
-    if   c in semico: d.append(NIL); pad(n); reduce(oparen); s.append(Op(c,2))
+    if   c in semico: d.append(NIL); pad(n); reduce(oparen); s.append(Op(';',2))
     elif c in oparen: pad(n); s.append(Op(c,1))
     elif c in cparen:
      reduce(oparen); rp(x:=s.pop());
      if s and s[-1].name=='{' and x.name=='[' and n!='}': s.append(Op(';',2))
      else: break
     elif c in adverb: x = s.pop(); s.append(Op(Ast(c,Ast(x.name)),x.arity)); x.arity==2 and pad(n)
-    elif c.isalnum() or c[0] in '`"': d.append(Ast(c)); break
+    elif noun(c) or c[0] in '`"': d.append(Ast(c)); break
     elif c in verb and n in cparen+semico:
      d.append(Ast(c)) if s and s[-1].name in oparen else rq(Ast('prj',Ast(c))); break
     elif c in verb and n in adverb: d.append(Ast(c)); break
@@ -69,7 +70,7 @@ def parse(t:str,verbose:int=0)->Ast:#return Ast or None (print errors + info if 
     if c==' ':
      if n=='/': return
      continue
-    if   c in semico: reduce(oparen); pad(n); s.append(Op(c,2))
+    if   c in semico: reduce(oparen); pad(n); s.append(Op(';',2))
     elif c in oparen: c in "({" and s.append(Op(d.pop(),1)); pad(n); s.append(Op(c,2))
     elif c in cparen:
      reduce(oparen); rp(x:=s.pop())
@@ -88,7 +89,7 @@ def parse(t:str,verbose:int=0)->Ast:#return Ast or None (print errors + info if 
      else: s.append(Op(c,2))
     else:
      s.append(Op(str(d.pop()),1))
-     if c.isalnum() or c[0] in '`"': d.append(Ast(c)); continue
+     if noun(c) or c[0] in '`"': d.append(Ast(c)); continue
      pad(n); s.append(Op(c,1))
     break
 
