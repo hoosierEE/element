@@ -33,14 +33,14 @@ def Parse(t:str,verbose:int=0)->Ast:#return Ast or None (print errors + info if 
    if   len(k)>1 and k[1].node==x: k = [k[0],*k[1].children]
    elif len(k)>0 and k[0].node==x: k = [*k[0].children,*k[1:]]
   if type(x)==str and x.isalnum(): d.append(Ast('app',Ast(x),*k))
-  elif type(x)==Ast:               d.append(Ast('app',x,*k))
+  elif type(x)==Ast and k:         d.append(Ast('app',x,*k))
   else:                            d.append(Ast(x,*k))
   debug('rt',x,k)
 
  def rp(x:Op):#(r)educe (p)aren, e.g: reduce(oparen); rp(s.pop())
   k = Ast(x.name,*(y.children if (y:=d.pop()).node==';' else (y,)))
   if x.name=='(' and len(k.children)==1 and k.children[0]!=NIL: k = k.children[0]
-  if x.name=='[' and x.arity==2: k = Ast(d.pop(),k)
+  if x.name=='[' and x.arity==2: k = Ast('app',d.pop(),k)
   d.append(k); debug('rp',x,k)
 
  def loop(i=0) -> int|None:#return error token index or None
@@ -72,7 +72,6 @@ def Parse(t:str,verbose:int=0)->Ast:#return Ast or None (print errors + info if 
     if i>=z: return
     c,i,n = t[i],i+1,nn(i); debug(c,'↔',n or 'END')
     if balance(c): return i
-    # if type(c)==list: d.append(Ast('arr',*map(Ast,c))); continue
     if c==' ':
      if n=='/': return
      continue
@@ -85,8 +84,11 @@ def Parse(t:str,verbose:int=0)->Ast:#return Ast or None (print errors + info if 
     elif c in adverb:
      k = Ast(c,d.pop())#bind adverb to whatever
      while n and n in adverb: k,i,n = Ast(n,k),i+1,nn(i)
+     debug('adv',k)
      if s:
-      if str(s[-1].name) in verb+oparen: d and s.append(Op(d.pop(),1)); s.append(Op(k,1))
+      if str(s[-1].name) in verb+oparen:
+       # d and s.append(Op(d.pop(),1));
+       s.append(Op(k,1))
       else: d.append(Ast(s.pop().name)); s.append(Op(k,2))
      else: s.append(Op(k,2))
      if s[-1].arity==2: pad(n)
