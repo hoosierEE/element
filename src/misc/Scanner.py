@@ -1,22 +1,18 @@
-def Scanner(expr:str):
+def Scan(expr:str):
  i,s,z = 0,list(expr),len(expr)
  def peek(): return next(0)
  def next(inc=1):
   nonlocal i
   if i>=z: return ''
   x = s[i]; i += inc; return x
+
  def tokenize():
   isspace   = lambda:peek()in[*' \t']
-  isnumeric = lambda:peek().isnumeric()
+  isnumeric = lambda:peek().isnumeric() or peek()=='-' and 0<i+1<z and s[i+1].isnumeric() and not s[i-1].isalnum()
   isquote   = lambda:peek()=='"'
   issymbol  = lambda:peek()=='`'
   def namey(x):
    while peek().isalnum(): x += next()
-   return x
-  def numbery(x):
-   while isnumeric(): x += next()
-   if peek()=='.':  x += next()
-   while isnumeric(): x += next()
    return x
   def stringy(x):
    while i<z and not (isquote() and x[-1]!='\\'): x += next()
@@ -27,6 +23,13 @@ def Scanner(expr:str):
    if peek().isalpha():
     x += next()
     while peek().isalnum(): x += next()
+   return x
+
+
+  def numbery(x):#-?[0-9]+.?[0-9]*
+   while peek().isnumeric(): x += next()
+   if peek()=='.':    x += next()
+   while peek().isnumeric(): x += next()
    return x
   def strand(t,f):
    ns = []
@@ -40,7 +43,8 @@ def Scanner(expr:str):
    if peek()=='\n': ts.append(next())
    elif isspace():
     while isspace(): next()
-    ts.append(' ')#compress spaces
+    if peek()=='/':
+     while peek() and peek()!='\n': next()
    elif isnumeric(): ts.append(strand(isnumeric,numbery))
    elif isquote(): ts.append(strand(isquote,stringy))
    elif issymbol(): ts.append(strand(issymbol,symboly))

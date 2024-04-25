@@ -1,4 +1,4 @@
-from Parser import parse
+from Parser import Parse
 def test_parser(parser):
  x = """
  input      ⇒ expected output (in s-expr form)
@@ -46,6 +46,10 @@ def test_parser(parser):
  +[x;y]     ⇒ (+ (prg x y))
  +[x]       ⇒ (+ (prg x))
  --a        ⇒ (- (- a))
+ 2-3        ⇒ (- 2 3)
+ 2 - 3      ⇒ (- 2 3)
+ 2- 3       ⇒ (- 2 3)
+ 2 -3       ⇒ (arr 2 -3)
  -a         ⇒ (- a)
  ;          ⇒ (seq NIL NIL)
  ;b         ⇒ (seq NIL b)
