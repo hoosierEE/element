@@ -1,12 +1,16 @@
-from Ast import *
-from Scanner import *
+from Ast import Ast
+from Scanner import Scan
 import collections as C
-NIL,Op = Ast('NIL'),C.namedtuple('Op','name arity')
+NIL = Ast('NIL')
+Op = C.namedtuple('Op','name arity')
 verb = (*'~!@#$%^&*-_=+|:,.<>?','')
-adverb,cparen,oparen,semico = (*"'/\\",''), (*')}]',''), (*'({[',''), (*';\n','')
+adverb = (*"'/\\",'')
+cparen = (*')}]','')
+oparen = (*'({[','')
+semico = (*';\n','')
 
-def Parse(t:str,verbose:int=0)->Ast:#return Ast or None (print errors + info if verbose)
- if not (t:=Scan(t)): return
+def Parse(t:list,verbose:int=0)->Ast:#return Ast or None (print errors + info if verbose)
+ if not t: return
  z,b,s,d = len(t),[],[],[]
  def debug(*args):#optional pretty print
   if not verbose: return
@@ -24,7 +28,8 @@ def Parse(t:str,verbose:int=0)->Ast:#return Ast or None (print errors + info if 
 
  def rq(k:Ast):#juxtaposition-based syntax: projection and composition
   while s and str(s[-1].name) not in oparen+semico:
-   x,a = s.pop(); k = Ast('cmp',Ast('prj',Ast(x),d.pop()) if a==2 else Ast(x),k)
+   x,a = s.pop()
+   k = Ast('cmp',Ast('prj',Ast(x),d.pop()) if a==2 else Ast(x),k)
   d.append(k); debug('rq')
 
  def rt(x,arity):#(r)educe (t)op of stack based on x's arity
@@ -45,16 +50,15 @@ def Parse(t:str,verbose:int=0)->Ast:#return Ast or None (print errors + info if 
 
  def loop(i=0) -> int|None:#return error token index or None
   nn = lambda i:(t[i+1] if type(t[i+1])==str else 1) if i+1<z else ''
-  noun = lambda x:x.replace('.','').isalnum()
+  noun = lambda x:type(x)==tuple or type(x)==str and x.replace('.','').replace('-','').isalnum()
   while True:
    while True:#unary
     if i>=z: return
     c,i,n = t[i],i+1,nn(i); debug(c,'→',n or 'END')
     if balance(c): return i
-    if type(c)==list: d.append(Ast('arr',*map(Ast,c))); break
-    if c==' ':
-     if n=='/': return
-     continue
+    if type(c)==tuple: d.append(Ast('arr',*map(Ast,c))); break
+    if   c==' ' and n=='/': return
+    if   c==' ': continue
     if   c in semico: d.append(NIL); pad(n); reduce(oparen); s.append(Op(';',2))
     elif c in oparen: pad(n); s.append(Op(c,1))
     elif c in cparen:
@@ -72,9 +76,8 @@ def Parse(t:str,verbose:int=0)->Ast:#return Ast or None (print errors + info if 
     if i>=z: return
     c,i,n = t[i],i+1,nn(i); debug(c,'↔',n or 'END')
     if balance(c): return i
-    if c==' ':
-     if n=='/': return
-     continue
+    if   c==' ' and n=='/': return
+    if   c==' ': continue
     if   c in semico: reduce(oparen); pad(n); s.append(Op(';',2))
     elif c in oparen: c in "({" and s.append(Op(d.pop(),1)); pad(n); s.append(Op(c,2))
     elif c in cparen:
@@ -84,11 +87,8 @@ def Parse(t:str,verbose:int=0)->Ast:#return Ast or None (print errors + info if 
     elif c in adverb:
      k = Ast(c,d.pop())#bind adverb to whatever
      while n and n in adverb: k,i,n = Ast(n,k),i+1,nn(i)
-     debug('adv',k)
      if s:
-      if str(s[-1].name) in verb+oparen:
-       # d and s.append(Op(d.pop(),1));
-       s.append(Op(k,1))
+      if str(s[-1].name) in verb+oparen: s.append(Op(k,1))
       else: d.append(Ast(s.pop().name)); s.append(Op(k,2))
      else: s.append(Op(k,2))
      if s[-1].arity==2: pad(n)

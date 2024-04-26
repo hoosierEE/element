@@ -4,7 +4,9 @@ def Scan(expr:str):
  def next(): nonlocal i; i += 1; return peek(-1)
  def tokenize():
   isspace   = lambda:peek()in[*' \t']
-  isnumeric = lambda:peek().isnumeric() or peek()=='-' and peek(1).isnumeric() and not peek(-1).isalnum()
+  isntnum   = lambda x:x.isspace() or x in '~!@#$%^&*-_=+|:,.<>?'
+  isnegnum  = lambda:peek()=='-' and peek(1).isnumeric() and isntnum(peek(-1))
+  isnumeric = lambda:peek().isnumeric() or isnegnum()
   isquote   = lambda:peek()=='"'
   issymbol  = lambda:peek()=='`'
   def namey(x):
@@ -26,9 +28,9 @@ def Scan(expr:str):
    while peek().isnumeric(): x += next()
    return x
   def strand(t,f):
-   ns = []
+   ns = tuple()
    while t():
-    ns.append(f(next()))
+    ns = (*ns, f(next()))
     while isspace(): next()
    return ns if len(ns)>1 else ns[0]
 

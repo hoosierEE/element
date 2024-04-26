@@ -1,5 +1,4 @@
-from Parser import Parse
-def test_parser(parser):
+def test_expr(scan,parse):
  x = """
  input      ⇒ expected output (in s-expr form)
             ⇒ None
@@ -47,6 +46,9 @@ def test_parser(parser):
  +[x;y]     ⇒ (+ (prg x y))
  +[x]       ⇒ (+ (prg x))
  --a        ⇒ (- (- a))
+ (2)-3      ⇒ (- 2 3)
+ +- 1       ⇒ (+ (- 1))
+ +-1        ⇒ (+ -1)
  --4        ⇒ (- -4)
  2-3        ⇒ (- 2 3)
  2 - 3      ⇒ (- 2 3)
@@ -121,7 +123,7 @@ def test_parser(parser):
  for i,o in (map(str.strip,a.split('⇒')) for a in x if not a.strip().startswith('#')):
   c = ''#comment
   if '#' in o: o,c = o.split('#')
-  try: o,x = o.strip(),parser(i.strip())
+  try: o,x = o.strip(),parse(scan(i.strip()))
   except: print(f'Exception while parsing "{i}"'); continue
   if str(x)==o: continue
   wanted = f'{i} ⇒ {o}{red}{end}'
