@@ -1,10 +1,23 @@
+'''
+Scan takes a string and returns a list of tokens.
+The resulting list is either bare strings,
+or "strands" of same-type values represented as tuples.
+examples:
+ "x+1"            ⇒ ["x", "+", "1"]
+ "1 2 3"          ⇒ [("1", "2", "3")]
+ "foo[x];`ax``by" ⇒ ["foo", "[", "x", "]", ";", ("`ax", "`", "`by")]
+ '`"hi"`world'    ⇒ [('`"hi"', '`world')]
+ '"hi""world"'    ⇒ [("hi", "world")]
+Numeric strands are numbers separated by spaces.
+Spaces are optional for symbol or string strands.
+'''
 def Scan(expr:str):
  i,s,z = 0,list(expr),len(expr)
- def peek(inc=0): return s[i+inc] if i+inc<z else ''
+ def peek(inc=0): return s[i+inc] if 0<=i+inc<z else ''
  def next(): nonlocal i; i += 1; return peek(-1)
  def tokenize():
   isspace   = lambda:peek()in[*' \t']
-  isntnum   = lambda x:x.isspace() or x in '~!@#$%^&*-_=+|:,.<>?'
+  isntnum   = lambda x:x.isspace() or x in '~!@#$%^&*-_=+|:,.<>?' or x==''
   isnegnum  = lambda:peek()=='-' and peek(1).isnumeric() and isntnum(peek(-1))
   isnumeric = lambda:peek().isnumeric() or isnegnum()
   isquote   = lambda:peek()=='"'
@@ -27,7 +40,7 @@ def Scan(expr:str):
    if peek()=='.':    x += next()
    while peek().isnumeric(): x += next()
    return x
-  def strand(t,f):
+  def strand(t,f):#stranding for symbols, strings, and numbers
    ns = tuple()
    while t():
     ns = (*ns, f(next()))
