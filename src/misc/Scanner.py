@@ -1,17 +1,19 @@
-'''
-Scan takes a string and returns a list of tokens.
-The resulting list is either bare strings,
-or "strands" of same-type values represented as tuples.
-examples:
- "x+1"            ⇒ ["x", "+", "1"]
- "1 2 3"          ⇒ [("1", "2", "3")]
- "foo[x];`ax``by" ⇒ ["foo", "[", "x", "]", ";", ("`ax", "`", "`by")]
- '`"hi"`world'    ⇒ [('`"hi"', '`world')]
- '"hi""world"'    ⇒ [("hi", "world")]
-Numeric strands are numbers separated by spaces.
-Spaces are optional for symbol or string strands.
-'''
-def Scan(expr:str):
+from typing import List,Tuple
+def Scan(expr:str)->List[str|Tuple[str]]:
+ '''
+ Scan(str) ⇒ List[str|Tuple[str]]
+ Scan turns a string into a list of tokens.
+ The resulting list is either bare strings,
+ or "strands" of same-type values represented as tuples.
+ examples:
+  "x+1"            ⇒ ["x", "+", "1"]
+  "1 2 3"          ⇒ [("1", "2", "3")]
+  "foo[x];`ax``by" ⇒ ["foo", "[", "x", "]", ";", ("`ax", "`", "`by")]
+  '`"hi"`world'    ⇒ [('`"hi"', '`world')]
+  '"hi""world"'    ⇒ [("hi", "world")]
+ Numeric strands are numbers separated by spaces.
+ Spaces are optional for symbol or string strands.
+ '''
  i,s,z = 0,list(expr),len(expr)
  def peek(inc=0): return s[i+inc] if 0<=i+inc<z else ''
  def next(): nonlocal i; i += 1; return peek(-1)
@@ -41,7 +43,7 @@ def Scan(expr:str):
    while peek().isnumeric(): x += next()
    return x
   def strand(t,f):#stranding for symbols, strings, and numbers
-   ns = tuple()
+   ns = ()
    while t():
     ns = (*ns, f(next()))
     while isspace(): next()

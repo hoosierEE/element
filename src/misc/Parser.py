@@ -1,5 +1,4 @@
 from Ast import Ast
-from Scanner import Scan
 import collections as C
 NIL = Ast('NIL')
 Op = C.namedtuple('Op','name arity')
@@ -10,6 +9,7 @@ oparen = (*'({[','')
 semico = (*';\n','')
 
 def Parse(t:list,verbose:int=0)->Ast:#return Ast or None (print errors + info if verbose)
+ ''' Parse(Scan(str)) ⇒ AST '''
  if not t: return
  z,b,s,d = len(t),[],[],[]
  def debug(*args):#optional pretty print
