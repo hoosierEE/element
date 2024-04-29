@@ -1,29 +1,34 @@
 * Element
-What: a dialect of K using CPU or GPU based on run-time data.
+What: a dialect of [[https://shakti.com/][K]] (and [[https://codeberg.org/anaseto/goal/src/branch/master][Goal]]) with implicit multi-core/GPU acceleration.
 
 Why: fun?
 
-How: CUDA/C++
+How: Python prototype, then "for real" in CUDA/C++ (or [[https://ziglang.org/download/0.11.0/release-notes.html#GPGPU][possibly Zig]]?)
 
-Dream: fast kernel DSL language embedded in a distributed system.
+Dream: fast DSL for data-intensive kernels hosted in a distributed system environment like [[https://gleam.run/][Gleam]].
 
 ** k crash course
 K is a vector language descended from APL, with hints of lisp.
+- Expressions evaluate right-to-left.
+- Operators have equal precedence, so =a*-b+c= is =a*(-(b+c))=.
+- Some operators are heavily overloaded based on number and type of their arguments.
+  For example =*= has just two meanings (for =*x= and =x*y=) but =!= has 7 variants.
+  These overloaded meanings are usually (but not always) related.
+- Iterators like ='= (each) =/= (reduce) and =\= (scan) take the place of for/while loops.
 
 #+begin_src k
- 1+2 3 4                  /vectors
+ 1+2 3 4                  /no-nonsense vectors
 3 4 5
- +\(1 2;3 4;5 6)          /adverbs modify verbs. "\" is "scan"
+ +\(1 2;3 4;5 6)          /iterators modify verbs. "\" is "scan"
 (1 2
  4 6
  9 12)
  -1_(+9(|+\)\1 1)1        /first 9 fibonacci numbers
 1 1 2 3 5 8 13 21 34
- (-1_(+9(|+\)\1 1)1)      /same
- {-1_(+9(|+\)\1 1)1}[]    /anonymous function
- {-1_(+x(|+\)\1 1)1}[9]   /"x" is first parameter
- f:{-1_(+x(|+\)\1 1)1}[9] /save function as "f"
- f'2 8 9                  /apply f to each of 2, 8, and 9
+ {-1_(+9(|+\)\1 1)1}[]    /as above, but as a function
+ {-1_(+x(|+\)\1 1)1}[9]   /parameterized with default first arg "x"
+ f:{-1_(+x(|+\)\1 1)1}[9] /save function to the name "f"
+ f'2 8 9                  /apply "f" to each (') item in vector 2 8 9, producing a list of results
 (1 1
  1 1 2 3 5 8 13 21
  1 1 2 3 5 8 13 21 34)
@@ -31,8 +36,8 @@ K is a vector language descended from APL, with hints of lisp.
 
 ** typical K features
 Most Ks have:
+- 1-dimensional vectors, nested lists, dictionaries
 - an interpreter
-- dynamic typing
 - eager evaluation
 - simple scoping rules (names are exclusively local or global)
 - basic interaction with the host system
@@ -40,8 +45,14 @@ Most Ks have:
   + run commands on the host system like =\ls=, =\pwd=
   + built-in file and socket I/O
 - a method for loading/executing other K scripts
-- a handful of basic types: int, float, char, symbol, list, dict, function
-- no user-defined types
+- dynamic typing:
+  - no user-defined types
+  - atomic types: integer, float, string, symbol ("booleans" use integers 0 and 1)
+  - 1-d homogeneous vectors of any of the atomic types
+  - implicit numeric promotion: =1+2.0= is =3.0=
+  - heterogeneous lists containing any type
+  - dictionaries with atomic type keys and values of any type
+- mutable variables (but operations do not mutate their arguments)
 - arithmetic operations defined for single values as well as collections. =1+2= is =3=, =1+2 0 3= is =3 1 4=
 - structural operations on collections. =(1 2),`a`b= is =(1;2;`a;`b)=
 - right-to-left evaluation, no operator precedence: =2*3+4= is =2*(3+4)=
@@ -49,7 +60,7 @@ Most Ks have:
 
 ** Element is different from K
 There are multiple K dialects with slightly different features.
-Most Element features stem from [[https://codeberg.org/ngn/k][ngn/k]], but has some differences.
+Element is a direct descendant of [[https://codeberg.org/ngn/k][ngn/k]], but there are some differences.
 
 Planned features:
 - [ ] implicit hardware acceleration by default
@@ -58,9 +69,10 @@ Planned features:
   + [ ] big regular data processed on GPU
 - [ ] lexical scope
 - [ ] closures
-- [ ] string data type (distinct from "list of char") as in [[https://anaseto.codeberg.page/goal/][goal]]
-- [ ] =x::y= declare/update mutable variable: =a::1; a::2= (ok, =a= is mutable)
+- [X] string data type (distinct from "list of char") as in [[https://codeberg.org/anaseto/goal/src/branch/master][goal]]
 - [ ] =x:y= declare immutable =b:1; b::2= (error, =b= is immutable!)
+- [ ] =x::y= declare/update mutable variable: =a::1; a::2= (ok, =a= is mutable)
+- [ ] append =::= to an operator for update-in-place semantics: =a::1; a+::2; /a is 3=
 - [ ] =(a+b;a:1;b:2)= is valid in K but not in Element. In Element, =e1;e2= is two expressions evaluated left to right, and a list =(e1;e2)= captures the result of each of those expressions. To replicate the K behavior use =a:1;b:2;(a+b;a;b)= or =2_(a:1;b:2;a+b;a;b)=.
 
 Aspirational features:
@@ -93,7 +105,15 @@ Some [[https://github.com/doctest/doctest/tree/master/doc/markdown#reference][do
 - [-] practice (Python) implementation
   - [X] lex/scan/tokenize
   - [X] parse
-  - [ ] codegen
+  - [-] codegen
+    - [X] tree-walk interpreter
+    - [X] simple expressions (1+2)
+    - [X] array arithmetic (1 2+3 4)
+    - [ ] composition/projection ((2+)1)
+    - [ ] iterators (+/1 2 3)
+    - [ ] structural functions (3#"hi""world")
+    - [ ] variable names and lexical scope
+    - [ ] type inference
 - [-] serious (C++/CUDA) implementation
   - [X] lex/scan/tokenize
   - [ ] optimize
@@ -103,3 +123,4 @@ Some [[https://github.com/doctest/doctest/tree/master/doc/markdown#reference][do
   - [ ] formal grammar
   - [ ] standard library
   - [ ] package management
+  - [ ] online documentation, playground, tutorials

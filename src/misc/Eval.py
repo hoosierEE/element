@@ -72,9 +72,10 @@ def Eval(ast:Ast)->list:#depth-first, right-to-left
    x = ast.node+':'*(len(ast.children)==1)
    if x in ops:
     s.append(sa(x,*(s.pop() for _ in range(len(ast.children)))))
+   elif x in ('app','cmp','prj'):
+    print(x)
    else:
-    print('x not in ops',x)
-    s.append(ty(x))#scalar literal
+    s.append(ty(x)(x))#scalar literal
 
  #hide stack from caller
  s = []; _Eval(s,ast); return s
