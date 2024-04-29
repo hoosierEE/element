@@ -102,7 +102,7 @@ This project is in the *experimental*, pre-alpha stage.
 Some [[https://github.com/doctest/doctest/tree/master/doc/markdown#reference][doctest]] tests exist, but no coverage goals yet.
 
 [0/3]
-- [-] practice (Python) implementation
+- [-] prototype implementation
   - [X] lex/scan/tokenize
   - [X] parse
   - [-] codegen
@@ -114,7 +114,7 @@ Some [[https://github.com/doctest/doctest/tree/master/doc/markdown#reference][do
     - [ ] structural functions (3#"hi""world")
     - [ ] variable names and lexical scope
     - [ ] type inference
-- [-] serious (C++/CUDA) implementation
+- [-] hardware accelerated implementation
   - [X] lex/scan/tokenize
   - [ ] optimize
   - [ ] codegen

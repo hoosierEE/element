@@ -8,7 +8,7 @@ cparen = (*')}]','')
 oparen = (*'({[','')
 semico = (*';\n','')
 
-def Parse(t:list,verbose:int=0)->Ast:#return Ast or None (print errors + info if verbose)
+def _Parse(t:list,verbose:int)->Ast:#return Ast or None (print errors + info if verbose)
  ''' Parse(Scan(str)) ⇒ AST '''
  if not t: return
  z,b,s,d = len(t),[],[],[]
@@ -101,8 +101,17 @@ def Parse(t:list,verbose:int=0)->Ast:#return Ast or None (print errors + info if
      pad(n); s.append(Op(c,1))
     break
 
- if i:=loop(): return print('unbalanced paren: '+"".join(t)+'\n'+f'{"^":>{18+i}}')
+ def err(i,m=''):
+  LF,s = '\n',''.join(t)[:i]
+  return f'Parse: {m}{LF}{s.strip()}'
+
+ if i:=loop():
+  raise SyntaxError(err(i,'unbalanced paren'))
  debug('done'); reduce('')
  while len(d)>1: x=d.pop(); d.append(Ast(d.pop(),x))
- if len(d)!=1 or len(s) or len(b): return SyntaxError("ERROR: stacks should end up empty")
+ if len(d)!=1 or len(s) or len(b): raise SyntaxError(err(z,'leftover stack, maybe unbalanced paren'))
  return d.pop()
+
+def Parse(t:list,verbose:int=0):
+ try: return _Parse(t,verbose)
+ except SyntaxError as e: print(e)

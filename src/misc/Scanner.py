@@ -13,10 +13,12 @@ def Scan(expr:str)->List[str|Tuple[str]]:
   '"hi""world"'    ⇒ [("hi", "world")]
  Numeric strands are numbers separated by spaces.
  Spaces are optional for symbol or string strands.
+ Detect syntax errors: '2a', unclosed quote
  '''
  i,s,z = 0,list(expr),len(expr)
  def peek(inc=0): return s[i+inc] if 0<=i+inc<z else ''
- def next(): nonlocal i; i += 1; return peek(-1)
+ def next(): nonlocal i;i+=1;return peek(-1)
+ def err(m,LF='\n'): return f'Syntax: {m}{LF}{(expr[:i]+peek()).strip()}'
  def tokenize():
   isspace   = lambda:peek()in[*' \t']
   isntnum   = lambda x:x.isspace() or x in '~!@#$%^&*-_=+|:,.<>?' or x==''
@@ -29,6 +31,7 @@ def Scan(expr:str)->List[str|Tuple[str]]:
    return x
   def stringy(x):
    while i<z and not (isquote() and x[-1]!='\\'): x += next()
+   if not isquote(): raise SyntaxError(err('unterminated quote'))
    x += next()#add trailing quote
    return x
   def symboly(x):
@@ -38,9 +41,10 @@ def Scan(expr:str)->List[str|Tuple[str]]:
     while peek().isalnum(): x += next()
    return x
   def numbery(x):#-?[0-9]+.?[0-9]*
-   while peek().isnumeric(): x += next()
+   while peek().isnumeric() and not peek(1).isalpha(): x += next()
    if peek()=='.':    x += next()
    while peek().isnumeric(): x += next()
+   if peek().isalpha(): raise SyntaxError(err('numbers can not contain letters'))
    return x
   def strand(t,f):#stranding for symbols, strings, and numbers
    ns = ()
@@ -62,4 +66,5 @@ def Scan(expr:str)->List[str|Tuple[str]]:
    elif peek().isalpha(): ts.append(namey(next()))
    else: ts.append(next())
   return ts
- return tokenize()
+ try: return tokenize()
+ except SyntaxError as e: print(e)
