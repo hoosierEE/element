@@ -2,9 +2,7 @@ from Ast import Ast#for type comparison
 from Parser import Parse; from Scanner import Scan#imported for repl convenience
 class Sym(str):pass
 class Name(str):pass
-Ty = dict(zip((Sym,Name,float,int,str,list,dict),
-              's   n    f     i   c   l    d'.split()))
-
+Ty = dict(zip((Name,Sym,dict,float,int,list,str),'nsdfilc'))
 def ty(x:str):#infer type
  floaty = lambda x:x.count('.')==1 and x.replace('.','') or ''
  if x[0] in '`"': return (str,Sym)[x[0]=='`']#str
@@ -77,24 +75,31 @@ def dispatch(v,e,*x):
  else:
   raise Exception('no dispatchable 0-argument ops exist')
 
-def Eval(ast:Ast)->list:#depth-first, right-to-left
- def _Eval(s:list,e:dict,ast:Ast):#stack s used for side effects/mutation
-  #the basic idea is to first eval ast.children (in the right order)
-  #and then finally eval ast.node itself
-  #if the node is an operator we apply it immediately to its arguments
+def Eval(ast:Ast)->list:
+ def _Eval(s:list,e:dict,ast:Ast):#(s)tack (e)nvironment
+  #basic idea (depth first, post-order traversal)
+  #1.evaluate ast.children (in the correct order)
+  #2.evaluate ast.node
+  #operands: push
+  #operators: lookup fn, pop #args, apply and push result
+  #TODO:
+  #iterators: create fn, pop #args, apply and push result
+  #assigns: check mutability, (insert into/update/read from/delete) environment
   n = ast.node
-  if n=='vec':
-   s.append(Val(ast))
-   return
-  ks = ast.children[::(1,-1)[n in ('lst','seq')]]
+  if n=='vec': return s.append(Val(ast))
+  ks = ast.children[::(1,-1)[n in ('lst','seq')]]#lst and seq evaluate from left to right
   for c in ks: _Eval(s,e,c)#evaluate children
-  if type(n)==Ast: _Eval(s,e,n)#evaluate node if it's also an AST (i.e: adverb)
+  if type(n)==Ast: _Eval(s,e,n)#evaluate node if it's also an AST (adverb,lambda,projection,...)
   else:
-   if ks and n in verb:
-    s.append(dispatch(n,e,*(s.pop() for _ in range(len(ks)))))
+   if ks and n in verb: s.append(dispatch(n,e,*(s.pop() for _ in range(len(ks)))))#the easy part
    elif n=='app':
+    print(n,ks)
+    # x = [s.pop() for _ in range(len(ks))][::-1]
+    # print(n,x)
     ... #TODO
    elif n in adverb:
+    print('adverb',n,ks)
+    x = [s.pop() for _ in range(len(ks))][::-1]
     ... #TODO
    else:
     s.append(Val(n))
