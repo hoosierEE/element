@@ -2,7 +2,7 @@ from Ast import Ast#for type comparison
 from Parser import Parse; from Scanner import Scan#imported for repl convenience
 class Sym(str):pass
 class Name(str):pass
-class Num:pass
+# class Num(float,int):pass
 class Val:
  def __init__(s,v):
   if type(v)==Ast:
@@ -41,43 +41,52 @@ class VVal(Val):
 
 verb,adverb = '~!@#$%^&*-_=+|:,.<>?',"'/\\"
 
+Num = int|float
 ops = {
- '+': {
-  (0b00,Num,Num): lambda x,y:x+y,
-  (0b01,Num,Num): lambda x,y:[x+yi for yi in y],
-  (0b10,Num,Num): lambda x,y:[xi+y for xi in x],
-  (0b11,Num,Num): lambda x,y:[xi+yi for xi,yi in zip(x,y)]
- },
- '-': {
-  (0b00,Num): lambda y:-y,
-  (0b01,Num): lambda y:[-yi for yi in y],
-  (0b00,Num,Num): lambda x,y:x-y,
-  (0b01,Num,Num): lambda x,y:[x-yi for yi in y],
-  (0b10,Num,Num): lambda x,y:[xi-y for xi in x],
-  (0b11,Num,Num): lambda x,y:[xi-yi for xi,yi in zip(x,y)]
- }
+ ('+',0b00,Num,Num): lambda x,y:x+y,
+ ('+',0b01,Num,Num): lambda x,y:[x+yi for yi in y],
+ ('+',0b10,Num,Num): lambda x,y:[xi+y for xi in x],
+ ('+',0b11,Num,Num): lambda x,y:[xi+yi for xi,yi in zip(x,y)],
+ ('-',0b00,Num): lambda y:-y,
+ ('-',0b01,Num): lambda y:[-yi for yi in y],
+ ('-',0b00,Num,Num): lambda x,y:x-y,
+ ('-',0b01,Num,Num): lambda x,y:[x-yi for yi in y],
+ ('-',0b10,Num,Num): lambda x,y:[xi-y for xi in x],
+ ('-',0b11,Num,Num): lambda x,y:[xi-yi for xi,yi in zip(x,y)],
+ ('#',0b00,Num): lambda y:1,
+ ('#',0b01,Num): lambda y:len(y),
+ ('#',0b00,int,Num): lambda x,y:[y]*x,
+ ('#',0b01,int,Num): lambda x,y:y[x:] if x<0 else y[:x],
 }
+
+def Ops(op,vec,t1,t2):
+ match (op,vec,t1,t2):
+  case ['+',0|1|2|3,'int'|'float','int'|'float']: return ops[op,vec,Num,Num]
+  case ['-',0|1|2|3,'int'|'float','int'|'float']: return ops[op,vec,Num,Num]
+  case ['-',0|1,'int'|'float',None]: return ops[op,vec,Num]
+  case ['#',0|1,'int'|'float',None]: return ops[op,vec,Num]
+  case ['#',0|1,'int','int'|'float']: return ops[op,vec,int,Num]
+  case _: raise Exception('nyi')
 
 def dispatch(v,e,x):
  if len(x)==3:
-  if v!='app': raise SyntaxError('dispatch(3) only defined for apply')
-  raise SyntaxError('nyi')
+  if v!='app': raise Exception('dispatch(3) only defined for apply')
+  raise Exception('nyi')
  elif len(x)==2:
   R,L = x #fix order (reverse reverse pop)
-  Lt = Num if L.t in (float,int) else L.t
-  Rt = Num if L.t in (float,int) else R.t
+  tl,tr = (repr(x)[8:-2] for x in (L.t,R.t))
   A = L.vec*2+R.vec
   if A==3 and len(L.v)!=len(R.v): raise Exception('shape mismatch')
-  z = ops[v][A,Lt,Rt](L.v,R.v)
+  z = Ops(v,A,tl,tr)(L.v,R.v)
   tz = type(z[0]) if type(z)==list else type(z)
   return VVal(z,tz,type(z)==list)
  elif len(x)==1:
   x = x[0]
-  xt = Num if x.t in (int,float) else x.t
-  r = ops[v][x.vec,xt](x.v)
+  t = repr(x.t)[8:-2]
+  r = Ops(v,x.vec,t,None)(x.v)
   return VVal(r,x.t,x.vec)
  else:
-  raise SyntaxError('no dispatchable 0-argument ops exist')
+  raise Exception('no dispatchable 0-argument ops exist')
 
 def Eval(ast:Ast)->list:#depth-first, right-to-left
  def _Eval(s:list,e:dict,ast:Ast):#stack s used for side effects/mutation
