@@ -1,9 +1,9 @@
 * Element
-What: a dialect of [[https://shakti.com/][K]] (and [[https://codeberg.org/anaseto/goal/src/branch/master][Goal]]) with implicit multi-core/GPU acceleration.
+What: a close descendant of [[https://en.wikipedia.org/wiki/K_(programming_language)][K]] (and [[https://codeberg.org/anaseto/goal/src/branch/master][Goal]]) with implicit multi-core/GPU acceleration.
 
 Why: fun?
 
-How: Python prototype, then "for real" in CUDA/C++ (or [[https://ziglang.org/download/0.11.0/release-notes.html#GPGPU][possibly Zig]]?)
+How: Python prototype, then "for real" in CUDA/C++ (or perhaps [[https://ziglang.org/download/0.11.0/release-notes.html#GPGPU][Zig]] or [[https://pkg.odin-lang.org/vendor/OpenGL/][Odin]]?)
 
 Dream: fast DSL for data-intensive kernels hosted in a distributed system environment like [[https://gleam.run/][Gleam]].
 
@@ -105,22 +105,29 @@ Some [[https://github.com/doctest/doctest/tree/master/doc/markdown#reference][do
 - [-] prototype implementation
   - [X] lex/scan/tokenize
   - [X] parse
+  - [ ] semantic analysis
+    - [ ] type inference
+    - [ ] type checking
+    - [ ] name binding
+    - [ ] other errors (arity, unused)
   - [-] codegen
     - [X] tree-walk interpreter
-    - [X] simple expressions (1+2)
-    - [X] array arithmetic (1 2+3 4)
-    - [ ] composition/projection ((2+)1)
-    - [ ] iterators (+/1 2 3)
-    - [ ] structural functions (3#"hi""world")
-    - [ ] variable names and lexical scope
+    - [X] simple arithmetic =1+2=
+    - [X] array arithmetic =1 2+3 4=
     - [ ] type inference
+    - [ ] variable names and lexical scope
+    - [ ] composition/projection =(2+)1=
+    - [ ] iterators =+/1 2 3=
+    - [ ] structural functions =3#"hi""world"=
 - [-] hardware accelerated implementation
   - [X] lex/scan/tokenize
-  - [ ] optimize
+  - [ ] parse
+  - [ ] semantic analysis
+  - [ ] optimization
   - [ ] codegen
 - [ ] stable release(s)
-  - [ ] pick a version numbering system and stick to it
+  - [ ] pick a version numbering system (and stick to it)
   - [ ] formal grammar
   - [ ] standard library
   - [ ] package management
-  - [ ] online documentation, playground, tutorials
+  - [ ] documentation, playground, tutorials

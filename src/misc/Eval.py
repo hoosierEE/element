@@ -1,81 +1,101 @@
-#input: AST
-#output: evaluate expressions to produce results, persist variables, side effects
-#NOTE
-#operator overloading is based on arity as well as type,
-#so when we go to evaluate an operator, we actually need a compound key:
-# (symbol, *types) where (types) contains the right argument and sometimes
-# a left argument too. Additionally some overloads are not just type but also value.
-#for example:
-# !i ⇒ enum/range
-# !I ⇒ odometer
-# !d ⇒ keys
-# !S ⇒ namespace keys
-# -i!I ⇒ integer division
-# i!I ⇒ modulo
-# x!y ⇒ dict
 from Ast import Ast#for type comparison
 from Parser import Parse; from Scanner import Scan#imported for repl convenience
-class sym(str):pass
+class Sym(str):pass
+class Name(str):pass
+class Num:pass
+class Val:
+ def __init__(s,v):
+  if type(v)==Ast:
+   if v.node!='vec': raise SyntaxError('not a vector')
+   s.vec = 1
+   c = [c.node for c in v.children]
+   if c0:=c[0][0] in '`"':
+    s.t = (str,Sym)[c0=='`']
+    s.v = c
+   else:
+    s.t = (int,float)[any('.' in x for x in c)]
+    s.v = list(map(s.t,c))
+  else:
+   s.vec = 0
+   s.t = s.ty(v)
+   s.v = s.t(v)
+ def __repr__(s):
+  t = repr(s.t)[8:-2]
+  i = f'[{t}]' if s.vec else t
+  return f'{s.v}:{i}'
+ def ty(s,x:str):#infer type
+  if x[0] in '`"': return (str,Sym)[x[0]=='`']#str
+  elif x.isnumeric(): return int
+  elif x.count('.')==1 and x.replace('.','').isnumeric(): return float
+  elif x[0]=='-' and len(x)>1:
+   if x[1:].isnumeric(): return int
+   if x.count('.')==1 and x.replace('.','').replace('-','').isnumeric(): return float
+   else: return Name
+  else: return Name
 
-# TODO:
-# pass: annotate types
-# func: choose func based on arity, types, etc.
-def ty(x:str):#infer type
- if x[0] in '`"': return (str,sym)[x[0]=='`']
- return float if '.' in x else int
+class VVal(Val):
+ def __init__(s,v,t,vec):
+  s.v = v
+  s.t = t
+  s.vec = vec
+
+verb,adverb = '~!@#$%^&*-_=+|:,.<>?',"'/\\"
 
 ops = {
- '-': lambda x,y:x-y,
- '-:': lambda x:-x,
- '+': lambda x,y:x+y,
- '*': lambda x,y:x*y,
- '*:': lambda x:x[2],
- '#': lambda x,y:y[:x],#(i#y) "take" is structural, not pervasive
- '#:': lambda x:len(x) if type(x)in(tuple,list) else 1,#also structural
- '%': lambda x,y:x/y,
- '@': lambda x,y:x[y+2],
- '!:': lambda x:('arr','int',*range(x)),
+ '+': {
+  (0b00,Num,Num): lambda x,y:x+y,
+  (0b01,Num,Num): lambda x,y:[x+yi for yi in y],
+  (0b10,Num,Num): lambda x,y:[xi+y for xi in x],
+  (0b11,Num,Num): lambda x,y:[xi+yi for xi,yi in zip(x,y)]
+ },
+ '-': {
+  (0b00,Num): lambda y:-y,
+  (0b01,Num): lambda y:[-yi for yi in y],
+  (0b00,Num,Num): lambda x,y:x-y,
+  (0b01,Num,Num): lambda x,y:[x-yi for yi in y],
+  (0b10,Num,Num): lambda x,y:[xi-y for xi in x],
+  (0b11,Num,Num): lambda x,y:[xi-yi for xi,yi in zip(x,y)]
+ }
 }
 
-def sa(op,*args):#scalar/array dispatcher
- primary = args[0]
- secondary = args[1] if len(args)>1 else ''
- if secondary:
-  if type(primary)==tuple:
-   if type(secondary)==tuple:#vec+vec
-    assert len(primary) == len(secondary)
-    assert primary[1]==secondary[1]#same type
-    return (*primary[:2],*(ops[op](x,y) for x,y in zip(primary[2:],secondary[2:])))
-   else:#vec+atom
-    return (*primary[:2],*(ops[op](x,secondary) for x in primary[2:]))
-  elif type(secondary)==tuple:#atom+vec
-   return (*secondary[:2],*(ops[op](primary,y) for y in secondary[2:]))
-  else:
-   return ops[op](primary,secondary)
+def dispatch(v,e,x):
+ if len(x)==3:
+  if v!='app': raise SyntaxError('dispatch(3) only defined for apply')
+  raise SyntaxError('nyi')
+ elif len(x)==2:
+  R,L = x #fix order (reverse reverse pop)
+  Lt = Num if L.t in (float,int) else L.t
+  Rt = Num if L.t in (float,int) else R.t
+  A = L.vec*2+R.vec
+  if A==3 and len(L.v)!=len(R.v): raise Exception('shape mismatch')
+  z = ops[v][A,Lt,Rt](L.v,R.v)
+  tz = type(z[0]) if type(z)==list else type(z)
+  return VVal(z,tz,type(z)==list)
+ elif len(x)==1:
+  x = x[0]
+  xt = Num if x.t in (int,float) else x.t
+  r = ops[v][x.vec,xt](x.v)
+  return VVal(r,x.t,x.vec)
  else:
-  if type(primary)==tuple:
-   return (*primary[:2],*(ops[op](p) for p in primary[2:]))
-  return ops[op](primary)
+  raise SyntaxError('no dispatchable 0-argument ops exist')
 
 def Eval(ast:Ast)->list:#depth-first, right-to-left
- def _Eval(s:list,ast):#stack s used for side effects/mutation
-  if ast.node=='arr':#infer type for strand literals (any float⇒float)
-   cs = [x.node for x in ast.children]
-   c0 = cs[0][0]
-   if c0 in '"`': cls = (str,sym)[c0=='`']
-   else:          cls = (int,float)[any('.' in x for x in cs)]
-   s.append(('arr',cls,*cs))
+ def _Eval(s:list,e:dict,ast:Ast):#stack s used for side effects/mutation
+  #the basic idea is to first eval ast.children (in the right order)
+  #and then finally eval ast.node itself
+  #if the node is an operator we apply it immediately to its arguments
+  n = ast.node
+  if n=='vec':
+   s.append(Val(ast))
    return
-  for c in ast.children[::-1]: _Eval(s,c)
-  if type(ast.node)==Ast: _Eval(s,ast.node)
+  ks = ast.children[::(1,-1)[n in ('lst','seq')]]
+  for c in ks: _Eval(s,e,c)#evaluate children
+  if type(n)==Ast: _Eval(s,e,n)#evaluate node if it's also an AST (i.e: adverb)
   else:
-   x = ast.node+':'*(len(ast.children)==1)
-   if x in ops:
-    s.append(sa(x,*(s.pop() for _ in range(len(ast.children)))))
-   elif x in ('app','cmp','prj'):
-    print(x)
+   if n in verb:
+    s.append(dispatch(n,e,[s.pop() for _ in range(len(ks))]))
    else:
-    s.append(ty(x)(x))#scalar literal
+    s.append(Val(n))
 
  #hide stack from caller
- s = []; _Eval(s,ast); return s
+ e,s = {},[]; _Eval(s,e,ast); return s

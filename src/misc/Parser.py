@@ -56,7 +56,7 @@ def _Parse(t:list,verbose:int)->Ast:#return Ast or None (print errors + info if 
     if i>=z: return
     c,i,n = t[i],i+1,nn(i); debug(c,'→',n or 'END')
     if balance(c): return i
-    if type(c)==tuple: d.append(Ast('arr',*map(Ast,c))); break
+    if type(c)==tuple: d.append(Ast('vec',*map(Ast,c))); break
     if   c==' ' and n=='/': return
     if   c==' ': continue
     if   c in semico: d.append(NIL); pad(n); reduce(oparen); s.append(Op(';',2))
@@ -70,6 +70,7 @@ def _Parse(t:list,verbose:int)->Ast:#return Ast or None (print errors + info if 
     elif c in verb and n in cparen+semico:
      d.append(Ast(c)) if s and s[-1].name in oparen else rq(Ast('prj',Ast(c))); break
     elif c in verb and n in adverb: d.append(Ast(c)); break
+    elif c in verb and n==':': s.append(Op(c+':',1)); c,i,n = t[i],i+1,nn(i)
     else: s.append(Op(c,1))
 
    while True:#binary
@@ -93,7 +94,8 @@ def _Parse(t:list,verbose:int)->Ast:#return Ast or None (print errors + info if 
      else: s.append(Op(k,2))
      if s[-1].arity==2: pad(n)
     elif c in verb:
-     if n in cparen+semico: rq(Ast('prj',Ast(c),d.pop())); continue
+     if n==':': s.append(Op(c+':',2)); c,i,n = t[i],i+1,nn(i)
+     elif n in cparen+semico: rq(Ast('prj',Ast(c),d.pop())); continue
      else: s.append(Op(c,2))
     else:
      s.append(Op(d.pop(),1))

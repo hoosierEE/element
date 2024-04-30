@@ -21,8 +21,7 @@ def Scan(expr:str)->List[str|Tuple[str]]:
  def err(m,LF='\n'): return f'Syntax: {m}{LF}{(expr[:i]+peek()).strip()}'
  def tokenize():
   isspace   = lambda:peek()in[*' \t']
-  isntnum   = lambda x:x.isspace() or x in '~!@#$%^&*-_=+|:,.<>?' or x==''
-  isnegnum  = lambda:peek()=='-' and peek(1).isnumeric() and isntnum(peek(-1))
+  isnegnum  = lambda:peek()=='-' and peek(1).isnumeric() and peek(-1) not in [*'.0123456789']
   isnumeric = lambda:peek().isnumeric() or isnegnum()
   isquote   = lambda:peek()=='"'
   issymbol  = lambda:peek()=='`'
@@ -42,9 +41,10 @@ def Scan(expr:str)->List[str|Tuple[str]]:
    return x
   def numbery(x):#-?[0-9]+.?[0-9]*
    while peek().isnumeric() and not peek(1).isalpha(): x += next()
-   if peek()=='.':    x += next()
+   dot=0
+   if peek()=='.': dot=1; x += next()
    while peek().isnumeric(): x += next()
-   if peek().isalpha(): raise SyntaxError(err('numbers can not contain letters'))
+   if peek().isalpha() and not dot: raise SyntaxError(err('numbers can not contain letters'))
    return x
   def strand(t,f):#stranding for symbols, strings, and numbers
    ns = ()
