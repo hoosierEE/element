@@ -37,11 +37,12 @@ class VVal(Val):
   s.v = v
   s.t = t
 
-verb,adverb = '~!@#$%^&*-_=+|:,.<>?',"'/\\"
+verb,adverb = ['::',*'~!@#$%^&*-_=+|:,.<>?'],"'/\\"
 
 def Ops(op,e,x,y):
- if x.v in e: x = e[x.v]
- if y.v in e: y = e[y.v]
+ if op==':' and x.v in e: raise ValueError('immutable')
+ x = x if op=='::' else e.get(x.v,x)
+ y = e.get(y.v,y)
  match (op,x.t,y.t):
   case ['+','f'|'i','f'|'i']:return x.v+y.v
   case ['+','f'|'i','F'|'I']:return [x.v+yi for yi in y.v]
@@ -54,11 +55,12 @@ def Ops(op,e,x,y):
   case ['-','F'|'I','f'|'i']:return [y.v-a for a in x.v]
   case ['-','F'|'I','F'|'I']:return [a-b for a,b in zip(x.v,y.v)]
   case ['#','i',_]:          return y.v[x.v:] if x.v<0 else y.v[:x.v]
+  case ['::','n',_]:         e[x.v]=y; return y.v
   case [':','n',_]:          e[x.v]=y; return y.v
   case ['#','i',None]:       return 1
   case ['#',_,None]:         return len(y.v)
   case ['!','i',None]:       return list(range(y.v))
-  case _: raise Exception('nyi')
+  case _: raise Exception(f'({x.t=}){op}({y.t=}) not defined')
 
 def dispatch(v,e,*x):
  if len(x)==3:
@@ -89,11 +91,11 @@ def Eval(ast:Ast)->list:
   #iterators: create fn, pop #args, apply and push result
   #assign: check mutability, (insert into/update/read from/delete) environment
   if (n:=ast.node)=='vec': return s.append(Val(ast))
-  # elif n=='NIL': return
   ks = ast.children[::(1,-1)[n in ('lst','seq')]]#lst and seq evaluate from left to right
   for c in ks: _Eval(s,e,c)#evaluate children in current env
   if type(n)==Ast: _Eval(s,{**e},n)#copy env
   elif n=='app':
+   print("TODO",n)
    if ks[0].node in adverb:
     ...
    if n in adverb:
