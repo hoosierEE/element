@@ -21,7 +21,7 @@ def Scan(expr:str)->List[str|Tuple[str]]:
  def err(m,LF='\n'): return f'Syntax: {m}{LF}{(expr[:i]+peek()).strip()}'
  def tokenize():
   isspace   = lambda:peek()in[*' \t']
-  isnegnum  = lambda:peek()=='-' and peek(1).isnumeric() and peek(-1) not in [*'.0123456789']
+  isnegnum  = lambda:peek()=='-' and peek(1).isnumeric() and peek(-1) not in [*'.0123456789)}]']
   isnumeric = lambda:peek().isnumeric() or isnegnum()
   isquote   = lambda:peek()=='"'
   issymbol  = lambda:peek()=='`'

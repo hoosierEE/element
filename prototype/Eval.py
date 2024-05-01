@@ -39,22 +39,25 @@ class VVal(Val):
 
 verb,adverb = '~!@#$%^&*-_=+|:,.<>?',"'/\\"
 
-def Ops(op,t1,t2):
- match (op,t1,t2):
-  case ['+','f'|'i','f'|'i']:return lambda x,y:x+y
-  case ['+','f'|'i','F'|'I']:return lambda x,y:[x+yi for yi in y]
-  case ['+','F'|'I','f'|'i']:return lambda x,y:[xi+y for xi in x]
-  case ['+','F'|'I','F'|'I']:return lambda x,y:[xi+yi for xi,yi in zip(x,y)]
-  case ['-','f'|'i']:        return lambda y:-y
-  case ['-','F'|'I']:        return lambda y:[-a for a in y]
-  case ['-','f'|'i','f'|'i']:return lambda x,y:x-y
-  case ['-','f'|'i','F'|'I']:return lambda x,y:[x-a for a in y]
-  case ['-','F'|'I','f'|'i']:return lambda x,y:[y-a for a in x]
-  case ['-','F'|'I','F'|'I']:return lambda x,y:[a-b for a,b in zip(x,y)]
-  case ['#','i',_]:          return lambda x,y:y[x:] if x<0 else y[:x]
-  case ['#','i',None]:       return lambda y:1
-  case ['#',_,None]:         return lambda y:len(y)
-  case ['!','i',None]:       return lambda y:list(range(y))
+def Ops(op,e,x,y):
+ if x.v in e: x = e[x.v]
+ if y.v in e: y = e[y.v]
+ match (op,x.t,y.t):
+  case ['+','f'|'i','f'|'i']:return x.v+y.v
+  case ['+','f'|'i','F'|'I']:return [x.v+yi for yi in y.v]
+  case ['+','F'|'I','f'|'i']:return [xi+y.v for xi in x.v]
+  case ['+','F'|'I','F'|'I']:return [xi+yi for xi,yi in zip(x.v,y.v)]
+  case ['-','f'|'i',None]:   return -y.v
+  case ['-','F'|'I',None]:   return [-a for a in y.v]
+  case ['-','f'|'i','f'|'i']:return x.v-y.v
+  case ['-','f'|'i','F'|'I']:return [x.v-a for a in y.v]
+  case ['-','F'|'I','f'|'i']:return [y.v-a for a in x.v]
+  case ['-','F'|'I','F'|'I']:return [a-b for a,b in zip(x.v,y.v)]
+  case ['#','i',_]:          return y.v[x.v:] if x.v<0 else y.v[:x.v]
+  case [':','n',_]:          e[x.v]=y; return y.v
+  case ['#','i',None]:       return 1
+  case ['#',_,None]:         return len(y.v)
+  case ['!','i',None]:       return list(range(y.v))
   case _: raise Exception('nyi')
 
 def dispatch(v,e,*x):
@@ -65,18 +68,18 @@ def dispatch(v,e,*x):
   R,L = x #undo reversal due to push/pop
   A = L.t.isupper()*2+R.t.isupper()
   if A==3 and len(L.v)!=len(R.v): raise Exception('shape mismatch')
-  z = Ops(v,L.t,R.t)(L.v,R.v)
+  z = Ops(v,e,L,R)
   tz = Ty[type(z[0])].upper() if type(z)==list else Ty[type(z)]
   return VVal(z,tz)
  elif len(x)==1:
-  z = Ops(v,x[0].t,None)(x[0].v)
+  z = Ops(v,e,x[0],None)
   tz = Ty[type(z[0])].upper() if type(z)==list else Ty[type(z)]
   return VVal(z,tz)
  else:
   raise Exception('no dispatchable 0-argument ops exist')
 
 def Eval(ast:Ast)->list:
- def _Eval(s:list,e:dict,ast:Ast):#(s)tack (e)nvironment
+ def _Eval(s:list,e:dict,ast:Ast):#(s)tack and its (e)nvironmental name bindings
   #basic idea (depth first, post-order traversal)
   #1.evaluate ast.children (in the correct order)
   #2.evaluate ast.node
@@ -84,25 +87,37 @@ def Eval(ast:Ast)->list:
   #operators: lookup fn, pop #args, apply and push result
   #TODO:
   #iterators: create fn, pop #args, apply and push result
-  #assigns: check mutability, (insert into/update/read from/delete) environment
-  n = ast.node
-  if n=='vec': return s.append(Val(ast))
+  #assign: check mutability, (insert into/update/read from/delete) environment
+  if (n:=ast.node)=='vec': return s.append(Val(ast))
+  # elif n=='NIL': return
   ks = ast.children[::(1,-1)[n in ('lst','seq')]]#lst and seq evaluate from left to right
-  for c in ks: _Eval(s,e,c)#evaluate children
-  if type(n)==Ast: _Eval(s,e,n)#evaluate node if it's also an AST (adverb,lambda,projection,...)
+  for c in ks: _Eval(s,e,c)#evaluate children in current env
+  if type(n)==Ast: _Eval(s,{**e},n)#copy env
+  elif n=='app':
+   if ks[0].node in adverb:
+    ...
+   if n in adverb:
+    ...
   else:
-   if ks and n in verb: s.append(dispatch(n,e,*(s.pop() for _ in range(len(ks)))))#the easy part
-   elif n=='app':
-    print(n,ks)
-    # x = [s.pop() for _ in range(len(ks))][::-1]
-    # print(n,x)
-    ... #TODO
-   elif n in adverb:
-    print('adverb',n,ks)
-    x = [s.pop() for _ in range(len(ks))][::-1]
-    ... #TODO
+   if ks and n in verb:#the easy part
+    s.append(dispatch(n,e,*(s.pop() for _ in range(len(ks)))))
+   elif n in ('prj','cmp'):
+    if len(ks)==2: v,o = [s.pop(),s.pop()]; s.append(v)#dip
+    else: o = s.pop()
+    s.append(VVal(o.v,n))
+   elif n in adverb:#first child of app
+    s.append(VVal(n,'adv'))
    else:
     s.append(Val(n))
 
  #hide stack from caller
- e,s = {},[]; _Eval(s,e,ast); return s
+ e,s = {},[]
+ _Eval(s,e,ast)
+ print(e)
+ print(s)
+ return s.pop()
+ # try:
+ #  _Eval(s,e,ast)
+ #  return s
+ # except Exception as e:
+ #  print(e)

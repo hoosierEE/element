@@ -77,6 +77,7 @@ def _Parse(t:list,verbose:int)->Ast:#return Ast or None (print errors + info if 
     if i>=z: return
     c,i,n = t[i],i+1,nn(i); debug(c,'↔',n or 'END')
     if balance(c): return i
+    if type(c)==tuple: d.append(Ast('vec',*map(Ast,c))); continue
     if   c==' ' and n=='/': return
     if   c==' ': continue
     if   c in semico: reduce(oparen); pad(n); s.append(Op(';',2))
@@ -91,7 +92,7 @@ def _Parse(t:list,verbose:int)->Ast:#return Ast or None (print errors + info if 
      if s:
       if str(s[-1].name) in verb+oparen: s.append(Op(k,1))
       else: d.append(Ast(s.pop().name)); s.append(Op(k,2))
-     else: s.append(Op(k,2))
+     else: s.append(Op(k,1))
      if s[-1].arity==2: pad(n)
     elif c in verb:
      if n==':': s.append(Op(c+':',2)); c,i,n = t[i],i+1,nn(i)
