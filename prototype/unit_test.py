@@ -7,6 +7,7 @@ def test_expr(scan,parse):
  +-         ⇒ (cmp + (prj -))
  (+)-       ⇒ (prj - +)
  +(-)       ⇒ (+ -)
+ 1 2+       ⇒ (prj + (vec 1 2))
  1 2+3 4    ⇒ (+ (vec 1 2) (vec 3 4))
  1 2+``a    ⇒ (+ (vec 1 2) (vec ` `a))
  a+-        ⇒ (cmp (prj + a) (prj -))

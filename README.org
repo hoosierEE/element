@@ -63,21 +63,25 @@ There are multiple K dialects with slightly different features.
 Element is a direct descendant of [[https://codeberg.org/ngn/k][ngn/k]], but there are some differences.
 
 Planned features:
-- [ ] implicit hardware acceleration by default
-  + [ ] small data processed on one CPU
-  + [ ] big irregular data processed on multiple CPUs
-  + [ ] big regular data processed on GPU
-- [ ] lexical scope
-- [ ] closures
-- [X] string data type (distinct from "list of char") as in [[https://codeberg.org/anaseto/goal/src/branch/master][goal]]
-- [ ] =x:y= declare immutable =b:1; b::2= (error, =b= is immutable!)
-- [ ] =x::y= declare/update mutable variable: =a::1; a::2= (ok, =a= is mutable)
-- [ ] append =::= to an operator for update-in-place semantics: =a::1; a+::2; /a is 3=
-- [ ] =(a+b;a:1;b:2)= is valid in K but not in Element. In Element, =e1;e2= is two expressions evaluated left to right, and a list =(e1;e2)= captures the result of each of those expressions. To replicate the K behavior use =a:1;b:2;(a+b;a;b)= or =2_(a:1;b:2;a+b;a;b)=.
+- implicit hardware acceleration by default
+  + small data processed on one CPU
+  + big irregular data processed on multiple CPUs
+  + big regular data processed on GPU
+- lexical scope
+- closures
+- string data type (distinct from "list of char") as in [[https://codeberg.org/anaseto/goal/src/branch/master][goal]]
+- =x:y= assign (immutable) variable
+- =x::y= assign (mutable) variable
+- No modified assignment operators. Use =a::a+1= instead of =a+:1=.
+  Meanwhile, verb-plus-colon still invokes the unary version of that verb, so =a-:1= is =a (- 1)=.
+- Lists and function arguments evaluate left-to-right.
+  For example, =f[a+b;a:1;b:2]= or =(a+b;a:1;b:2)= are valid in K but not in Element.
+  In Element, =e1;e2= is two separate expressions evaluated left to right, and a list =(e1;e2)= collects the results of each of those expressions into a common container (the list itself).
+  Alternatives: use =a:1;b:2;(a+b;a;b)= or =2_(a:1;b:2;a+b;a;b)=.
 
 Aspirational features:
-- [ ] module system: =require x=, =provide x=
-- [ ] =\cd= etc. provided by REPL, not runtime
+- module system: =require x=, =provide x=
+- =\cd= etc. provided by REPL, not runtime
 
 * Install
 Compile for GPU with NVIDIA's =nvcc= compiler:

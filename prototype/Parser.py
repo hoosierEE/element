@@ -2,7 +2,9 @@ from Ast import Ast
 import collections as C
 NIL = Ast('NIL')
 Op = C.namedtuple('Op','name arity')
-verb = (*'~!@#$%^&*-_=+|:,.<>?','')
+
+verb = (*'~!@#$%^&*-_=+|,.<>?','')
+copula = ('::',':')
 adverb = (*"'/\\",'')
 cparen = (*')}]','')
 oparen = (*'({[','')
@@ -12,6 +14,7 @@ def _Parse(t:list,verbose:int)->Ast:#return Ast or None (print errors + info if 
  ''' Parse(Scan(str)) ⇒ AST '''
  if not t: return
  z,b,s,d = len(t),[],[],[]
+ noun = lambda x:type(x)==tuple or type(x)==str and x.replace('.','').replace('-','').isalnum()
  def debug(*args):#optional pretty print
   if not verbose: return
   R = lambda x:'LF' if x=='\n' else str(x)
@@ -22,6 +25,9 @@ def _Parse(t:list,verbose:int)->Ast:#return Ast or None (print errors + info if 
  def balance(op) -> bool:#incremental parentheses check
   if op in oparen: b.append(cparen[oparen.index(op)]); return 0
   if op in cparen and (not b or op!=b.pop()): return 1
+ def err(i,m=''):
+  LF,s = '\n',''.join(t)[:i]
+  return f'Parse: {m}{LF}{s.strip()}'
 
  def reduce(until:str):#reduce until (until) matches
   while s and str(s[-1].name) not in until: rt(*s.pop())
@@ -37,7 +43,7 @@ def _Parse(t:list,verbose:int)->Ast:#return Ast or None (print errors + info if 
   if x in semico:
    if   len(k)>1 and k[1].node==x: k = [k[0],*k[1].children]
    elif len(k)>0 and k[0].node==x: k = [*k[0].children,*k[1:]]
-  if type(x)==str and x.isalnum(): d.append(Ast('app',Ast(x),*k))
+  if noun(x): d.append(Ast('app',Ast(x),*k))
   elif type(x)==Ast and k:         d.append(Ast('app',x,*k))
   else:                            d.append(Ast(x,*k))
   debug('rt',x,k)
@@ -50,7 +56,6 @@ def _Parse(t:list,verbose:int)->Ast:#return Ast or None (print errors + info if 
 
  def loop(i=0) -> int|None:#return error token index or None
   nn = lambda i:(t[i+1] if type(t[i+1])==str else 1) if i+1<z else ''
-  noun = lambda x:type(x)==tuple or type(x)==str and x.replace('.','').replace('-','').isalnum()
   while True:
    while True:#unary
     if i>=z: return
@@ -67,10 +72,10 @@ def _Parse(t:list,verbose:int)->Ast:#return Ast or None (print errors + info if 
      else: break
     elif c in adverb: x = s.pop(); s.append(Op(Ast(c,Ast(x.name)),x.arity)); x.arity==2 and pad(n)
     elif noun(c) or c[0] in '`"': d.append(Ast(c)); break
-    elif c in verb and n in cparen+semico:
+    elif c[0] in verb and n in cparen+semico:
+     if len(c)==2: raise SyntaxError(err(i,"missing argument to unary op"))
      d.append(Ast(c)) if s and s[-1].name in oparen else rq(Ast('prj',Ast(c))); break
-    elif c in verb and n in adverb: d.append(Ast(c)); break
-    elif c in verb and n==':': s.append(Op(c+':',1)); c,i,n = t[i],i+1,nn(i)
+    elif c[0] in verb and n in adverb: d.append(Ast(c)); break
     else: s.append(Op(c,1))
 
    while True:#binary
@@ -78,7 +83,6 @@ def _Parse(t:list,verbose:int)->Ast:#return Ast or None (print errors + info if 
     c,i,n = t[i],i+1,nn(i); debug(c,'↔',n or 'END')
     if balance(c): return i
     if type(c)==tuple: d.append(Ast('vec',*map(Ast,c))); continue
-    if   c==' ' and n=='/': return
     if   c==' ': continue
     if   c in semico: reduce(oparen); pad(n); s.append(Op(';',2))
     elif c in oparen: c in "({" and s.append(Op(d.pop(),1)); pad(n); s.append(Op(c,2))
@@ -90,28 +94,28 @@ def _Parse(t:list,verbose:int)->Ast:#return Ast or None (print errors + info if 
      k = Ast(c,d.pop())#bind adverb to whatever
      while n and n in adverb: k,i,n = Ast(n,k),i+1,nn(i)
      if s:
-      if str(s[-1].name) in verb+oparen: s.append(Op(k,1))
+      if str(s[-1].name)[0] in verb+oparen: s.append(Op(k,1))
       else: d.append(Ast(s.pop().name)); s.append(Op(k,2))
      else: s.append(Op(k,1))
      if s[-1].arity==2: pad(n)
+    elif c in copula and n:
+     s.append(Op(c,2))
     elif c in verb:
-     if n==':': s.append(Op(c+':',2)); c,i,n = t[i],i+1,nn(i)
-     elif n in cparen+semico: rq(Ast('prj',Ast(c),d.pop())); continue
+     if c.endswith(':') and c not in copula:
+      if n and n in cparen+semico: rq(Ast('prj',Ast('app',d.pop(),Ast(c))))
+      else: s.append(Op(c,1))
+      break
+     if n in cparen+semico: rq(Ast('prj',Ast(c),d.pop())); continue
      else: s.append(Op(c,2))
     else:
-     s.append(Op(d.pop(),1))
+     s.append(Op(d.pop(),1))#whatever this was, it wasn't a noun
      if noun(c) or c[0] in '`"': d.append(Ast(c)); continue
      pad(n); s.append(Op(c,1))
     break
 
- def err(i,m=''):
-  LF,s = '\n',''.join(t)[:i]
-  return f'Parse: {m}{LF}{s.strip()}'
-
- if i:=loop():
-  raise SyntaxError(err(i,'unbalanced paren'))
+ if i:=loop(): raise SyntaxError(err(i,'unbalanced paren'))
  debug('done'); reduce('')
- while len(d)>1: x=d.pop(); d.append(Ast(d.pop(),x))
+ while len(d)>1: x=d.pop(); d.append(Ast('app',d.pop(),x))
  if len(d)!=1 or len(s) or len(b): raise SyntaxError(err(z,'leftover stack, maybe unbalanced paren'))
  return d.pop()
 

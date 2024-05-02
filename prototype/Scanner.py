@@ -1,10 +1,10 @@
 from typing import List,Tuple
 def Scan(expr:str)->List[str|Tuple[str]]:
  '''
- Scan(str) ⇒ List[str|Tuple[str]]
- Scan turns a string into a list of tokens.
- The resulting list is either bare strings,
- or "strands" of same-type values represented as tuples.
+ Tokenizes a string.
+ Each item in the resulting list is one of:
+  (a) string, or
+  (b) "strands" of same-type values represented as tuples.
  examples:
   "x+1"            ⇒ ["x", "+", "1"]
   "1 2 3"          ⇒ [("1", "2", "3")]
@@ -13,7 +13,7 @@ def Scan(expr:str)->List[str|Tuple[str]]:
   '"hi""world"'    ⇒ [("hi", "world")]
  Numeric strands are numbers separated by spaces.
  Spaces are optional for symbol or string strands.
- Detect syntax errors: '2a', unclosed quote
+ Detect syntax errors: '2a', unclosed quote.
  '''
  i,s,z = 0,list(expr),len(expr)
  def peek(inc=0): return s[i+inc] if 0<=i+inc<z else ''
@@ -25,8 +25,12 @@ def Scan(expr:str)->List[str|Tuple[str]]:
   isnumeric = lambda:peek().isnumeric() or isnegnum()
   isquote   = lambda:peek()=='"'
   issymbol  = lambda:peek()=='`'
+  isverb    = lambda:peek()in[*'~!@#$%^&*-_=+|:,.<>?']
   def namey(x):
    while peek().isalnum(): x += next()
+   return x
+  def verby(x):#verb (optional suffix ':')
+   if peek()==':': x += next()
    return x
   def stringy(x):
    while i<z and not (isquote() and x[-1]!='\\'): x += next()
@@ -58,9 +62,10 @@ def Scan(expr:str)->List[str|Tuple[str]]:
    if peek()=='\n': ts.append(next())
    elif isspace():
     while isspace(): next()
-    if peek()=='/':
+    if peek()=='/':#comment
      while peek() and peek()!='\n': next()
    elif isnumeric(): ts.append(strand(isnumeric,numbery))
+   elif isverb(): ts.append(verby(next()))#must be AFTER isnumeric() because of "-"
    elif isquote(): ts.append(strand(isquote,stringy))
    elif issymbol(): ts.append(strand(issymbol,symboly))
    elif peek().isalpha(): ts.append(namey(next()))
