@@ -18,7 +18,7 @@ def _Parse(t:list,verbose:int)->Ast:#return Ast or None (print errors + info if 
  def balance(op) -> bool:#incremental parentheses check
   if op in oparen: b.append(cparen[oparen.index(op)]); return 0
   if op in cparen and (not b or op!=b.pop()): return 1
- def err(i,m=''): return f'Parse: {m}{LF}{"".join(t)[:i].strip()}'
+ def err(i,m=''): return f'Parse: {m}{LF}{"".join(t[:i]).strip()}'
  def reduce(until:str):#reduce until (until) matches
   while s and str(s[-1].name) not in until: rt(*s.pop())
 
@@ -63,7 +63,7 @@ def _Parse(t:list,verbose:int)->Ast:#return Ast or None (print errors + info if 
     elif c in adverb: x = s.pop(); s.append(Op(Ast(c,Ast(x.name)),x.arity)); x.arity==2 and pad(n)
     elif noun(c) or c[0] in '`"': d.append(Ast(c)); break
     elif c[0] in verb and n in cparen+endexp:
-     if len(c)==2: raise SyntaxError(err(i,"missing argument to unary op"))
+     if len(c)==2: raise SyntaxError(err(i,"missing argument to unary op"))#FIXME: (-+:) ⇒ (cmp - +:)
      d.append(Ast(c)) if s and s[-1].name in oparen else rq(Ast('prj',Ast(c))); break
     elif c[0] in verb and n in adverb: d.append(Ast(c)); break
     else: s.append(Op(c,1))
@@ -94,7 +94,7 @@ def _Parse(t:list,verbose:int)->Ast:#return Ast or None (print errors + info if 
      else: s.append(Op(c,2))
     elif c[0] in verb:
      if c.endswith(':'):
-      if n and n in cparen+endexp: rq(Ast('prj',Ast('app',d.pop(),Ast(c))))
+      if n in cparen+endexp: rq(Ast('prj',Ast(c),d.pop()))
       else: s.append(Op(c,1))
       break
      if n in cparen+endexp: rq(Ast('prj',Ast(c),d.pop())); continue
