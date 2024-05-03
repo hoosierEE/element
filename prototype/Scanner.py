@@ -1,4 +1,5 @@
 from typing import List,Tuple
+from Builtin import BS,verb,LF,whitespace
 def Scan(expr:str)->List[str|Tuple[str]]:
  '''
  Tokenizes a string.
@@ -18,14 +19,14 @@ def Scan(expr:str)->List[str|Tuple[str]]:
  i,s,z = 0,list(expr),len(expr)
  def peek(inc=0): return s[i+inc] if 0<=i+inc<z else ''
  def next(): nonlocal i;i+=1;return peek(-1)
- def err(m,LF='\n'): return f'Syntax: {m}{LF}{(expr[:i]+peek()).strip()}'
+ def err(m): return f'Syntax: {m}{LF}{(expr[:i]+peek()).strip()}'
  def tokenize():
-  isspace   = lambda:peek()in[*' \t']
+  isspace   = lambda:peek()in whitespace
   isnegnum  = lambda:peek()=='-' and peek(1).isnumeric() and peek(-1) not in [*'.0123456789)}]']
   isnumeric = lambda:peek().isnumeric() or isnegnum()
   isquote   = lambda:peek()=='"'
   issymbol  = lambda:peek()=='`'
-  isverb    = lambda:peek()in[*'~!@#$%^&*-_=+|:,.<>?']
+  isverb    = lambda:peek() in verb
   def namey(x):
    while peek().isalnum(): x += next()
    return x
@@ -33,7 +34,7 @@ def Scan(expr:str)->List[str|Tuple[str]]:
    if peek()==':': x += next()
    return x
   def stringy(x):
-   while i<z and not (isquote() and x[-1]!='\\'): x += next()
+   while i<z and not (isquote() and x[-1]!=BS): x += next()
    if not isquote(): raise SyntaxError(err('unterminated quote'))
    x += next()#add trailing quote
    return x
@@ -59,13 +60,14 @@ def Scan(expr:str)->List[str|Tuple[str]]:
 
   ts = []
   while peek():
-   if peek()=='\n': ts.append(next())
+   if peek()==LF: ts.append(next())
    elif isspace():
     while isspace(): next()
     if peek()=='/':#comment
-     while peek() and peek()!='\n': next()
+     while peek() and peek()!=LF: next()
    elif isnumeric(): ts.append(strand(isnumeric,numbery))
-   elif isverb(): ts.append(verby(next()))#must be AFTER isnumeric() because of "-"
+   elif peek()==':': ts.append(verby(next()))
+   elif isverb(): ts.append(verby(next()))#AFTER '-' and ':'
    elif isquote(): ts.append(strand(isquote,stringy))
    elif issymbol(): ts.append(strand(issymbol,symboly))
    elif peek().isalpha(): ts.append(namey(next()))
