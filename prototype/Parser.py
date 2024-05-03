@@ -63,7 +63,6 @@ def _Parse(t:list,verbose:int)->Ast:#return Ast or None (print errors + info if 
     elif c in adverb: x = s.pop(); s.append(Op(Ast(c,Ast(x.name)),x.arity)); x.arity==2 and pad(n)
     elif noun(c) or c[0] in '`"': d.append(Ast(c)); break
     elif c[0] in verb and n in cparen+endexp:
-     if len(c)==2: raise SyntaxError(err(i,"missing argument to unary op"))#FIXME: (-+:) ⇒ (cmp - +:)
      d.append(Ast(c)) if s and s[-1].name in oparen else rq(Ast('prj',Ast(c))); break
     elif c[0] in verb and n in adverb: d.append(Ast(c)); break
     else: s.append(Op(c,1))
@@ -94,9 +93,8 @@ def _Parse(t:list,verbose:int)->Ast:#return Ast or None (print errors + info if 
      else: s.append(Op(c,2))
     elif c[0] in verb:
      if c.endswith(':'):
-      if n in cparen+endexp: rq(Ast('prj',Ast(c),d.pop()))
-      else: s.append(Op(c,1))
-      break
+      if n in cparen+endexp: raise SyntaxError(err(i,"prefix op end"))
+      else: s.append(Op(c,1)); break
      if n in cparen+endexp: rq(Ast('prj',Ast(c),d.pop())); continue
      else: s.append(Op(c,2))
     else:
