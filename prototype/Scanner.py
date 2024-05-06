@@ -74,5 +74,4 @@ def Scan(expr:str)->List[str|Tuple[str]]:
    elif peek().isalpha(): ts.append(namey(next()))
    else: ts.append(next())
   return ts
- try: return tokenize()
- except SyntaxError as e: print(e)
+ return tokenize()

@@ -9,7 +9,7 @@ def _Parse(t:list,verbose:int)->Ast:
  z,b,s,d = len(t),[],[],[]
  noun = lambda x:type(x)==tuple or type(x)==str and x.replace('.','').replace('-','').isalnum()
  def debug(*args):#optional logging
-  if verbose<2: return
+  if verbose<1: return
   R = lambda x:'LF' if x==LF else str(x)
   ss = ' '.join(f'{R(x.name)}{"⁰¹²"[x.arity]}' for x in s)
   sd = ' '.join(map(R,d))
@@ -93,7 +93,7 @@ def _Parse(t:list,verbose:int)->Ast:
      else: s.append(Op(c,2))
     elif c[0] in VERB:
      if c.endswith(':'):
-      if n in CPAREN+ENDEXP: raise SyntaxError(err(i,"prefix op end"))
+      if n in CPAREN+ENDEXP: raise SyntaxError(err(i,"can't project a prefix op"))
       else: s.append(Op(c,1)); break
      if n in CPAREN+ENDEXP: rq(Ast('prj',Ast(c),d.pop())); continue
      else: s.append(Op(c,2))
@@ -109,7 +109,5 @@ def _Parse(t:list,verbose:int)->Ast:
  if len(d)!=1 or len(s) or len(b): raise SyntaxError(err(z,'leftover stack, maybe unbalanced paren'))
  return d.pop()
 
-def Parse(t:list,verbose:int=1):
- '''verbose levels: 0(silent) 1(errors) 2(debug)'''
- try: return _Parse(t,verbose)
- except SyntaxError as e: verbose and print(e)
+def Parse(t:list,verbose:int=0):
+ return _Parse(t,verbose)
