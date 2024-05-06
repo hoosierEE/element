@@ -1,5 +1,5 @@
 from typing import List,Tuple
-from Builtin import BS,verb,LF,whitespace
+from Builtin import BS,VERB,LF,WHITESPACE
 def Scan(expr:str)->List[str|Tuple[str]]:
  '''
  Tokenizes a string.
@@ -21,12 +21,13 @@ def Scan(expr:str)->List[str|Tuple[str]]:
  def next(): nonlocal i;i+=1;return peek(-1)
  def err(m): return f'Syntax: {m}{LF}{(expr[:i]+peek()).strip()}'
  def tokenize():
-  isspace   = lambda:peek()in whitespace
-  isnegnum  = lambda:peek()=='-' and peek(1).isnumeric() and peek(-1) not in [*'.0123456789)}]']
+  isspace   = lambda:peek()in WHITESPACE
+  # isnegnum  = lambda:peek()=='-' and peek(1).isnumeric() and peek(-1) not in [*'.0123456789)}]']
+  isnegnum  = lambda:peek()=='-' and peek(1).isnumeric() and not peek(-1).isalnum() and peek(-1) not in [*')}]']
   isnumeric = lambda:peek().isnumeric() or isnegnum()
   isquote   = lambda:peek()=='"'
   issymbol  = lambda:peek()=='`'
-  isverb    = lambda:peek() in verb
+  isverb    = lambda:peek() in VERB
   def namey(x):
    while peek().isalnum(): x += next()
    return x

@@ -1,9 +1,9 @@
+ADVERB = "'","/","\\"
 BS = "\\"
+COPULA = ":","::"
+CPAREN = ')','}',']'
+ENDEXP = '',';','\n'
 LF = "\n"
-adverb = "'","/","\\"
-copula = ":","::"
-cparen = ')','}',']'
-endexp = '',';','\n'
-oparen = '(','{','['
-verb = tuple("~!@#$%^&*-_=+|,.<>?")
-whitespace = " ","\t"
+OPAREN = '(','{','['
+VERB = tuple("~!@#$%^&*-_=+|,.<>?")
+WHITESPACE = " ","\t"

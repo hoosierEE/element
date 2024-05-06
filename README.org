@@ -1,11 +1,21 @@
 * Element
-What: a close descendant of [[https://en.wikipedia.org/wiki/K_(programming_language)][K]] (and [[https://codeberg.org/anaseto/goal/src/branch/master][Goal]]) with implicit multi-core/GPU acceleration.
+Combining the most delightful parts of K with good ideas from functional and mainstream programming languages.
 
-Why: fun?
+- What: a close descendant of [[https://en.wikipedia.org/wiki/K_(programming_language)][K]] (and [[https://codeberg.org/anaseto/goal/src/branch/master][Goal]]) with implicit multi-core/GPU acceleration.
+- Why: fun?
+- How: Python prototype, then "for real" in CUDA/C++ (or perhaps [[https://ziglang.org/download/0.11.0/release-notes.html#GPGPU][Zig]] or [[https://pkg.odin-lang.org/vendor/OpenGL/][Odin]]?)
+- Dream: a fast DSL for data-intensive kernels embedded in a distributed system environment like [[https://gleam.run/][Gleam]].
 
-How: Python prototype, then "for real" in CUDA/C++ (or perhaps [[https://ziglang.org/download/0.11.0/release-notes.html#GPGPU][Zig]] or [[https://pkg.odin-lang.org/vendor/OpenGL/][Odin]]?)
-
-Dream: fast DSL for data-intensive kernels hosted in a distributed system environment like [[https://gleam.run/][Gleam]].
+** types
+- base types - int, float, string, symbol
+- compound types
+ - list-like
+   - tensor - same type, N dimensional
+   - vector - same type, 1 dimensional (simplest tensor)
+   - list - any types, any shape
+ - dict-like
+   - table - keys (column names) are symbols, values are same-shape vectors
+   - dict - keys are any fundamental type, values are arbitrary
 
 ** k crash course
 K is a vector language descended from APL, with hints of lisp.
