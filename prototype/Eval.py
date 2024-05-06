@@ -1,21 +1,21 @@
-# BETTER IDEA:
-# rather than DFS to construct an RPN representation,
-# just eval directly with recursive descent..
 from Ast import Ast
 from Builtin import COPULA,VERB
+from Sema import lift_prj,formalize
 class Sym(str):pass
 class Name(str):pass
-#Vectors
-#1 2 3 ⇒ (1 2 3):I
-#1 2.0 ⇒ (1.0 2.0):F
-#List subtypes
-#1.any type/shape ("ab";1)
-#2.1 type, any shape (1;2;3):I.3 or (0;((1;2);3);4):(I)
-#3.tensor ((1;2;3);(4;5;6)):I.2.3
-#Dict subtypes
-#1.generic {a:1;b:("hi";"world")}:D≠
-#2.unitype {a:1;b:(2;3)}:DI
-#3.table {a:(1;2);b:(3;4)}:T
+#Vectors; strand/list notation, or construct with ops:
+#1 2 3 ⇒ [1, 2, 3]⊂I
+#1 2.0 ⇒ [1.0, 2.0]⊂F
+#(1.0;2.0) ⇒ [1.0, 2.0]⊂F
+#1,2   ⇒ [1, 2]⊂I
+#List types
+#any type, any shape ("ab";1)⊂L
+#1 type, any shape (1;2;3)⊂LI  (0;((1;2);3);4)⊂LI
+#tensor (1 type, defined shape): ((1;2;3);(4;5;6))⊂I(2;3)
+#Dict types
+#generic {a:1;b:("hi";"world")}⊂D
+#unitype {a:1;b:(2;3)}⊂DI  {a:1.0;b:(2.0;3.0)}⊂DF
+#table {a:(1;2);b:(3;4)}⊂TI
 Ty = dict(zip((str,Sym,Name,int,float,dict,list),'csnifDL'))
 Yt = {b:a for a,b in Ty.items()}
 class Val:
@@ -59,17 +59,20 @@ def v2val(op:str,a:Val,b:Val) -> Val:
   case ['@',t,'i'] if t.isupper(): return Val(Ty[type(r:=a.v[b.v])],r)#TODO: outdex
   case _: raise RuntimeError('nyi')
 
-# def v2(op:str,a,b):
-#  if type(a)==type(b)==Val: return v2val(op,a,b)
-#  if type(a)==list and type(b)==Val:
+def v2(op:str,a,b):
+ if type(a)==type(b)==Val:
+  return v2val(op,a,b)
+ # if type(a)==list and type(b)==Val:
+ #  raise 'nyi'
+ raise RuntimeError(f'nyi: {op} not defined for {a}{op}{b}')
 
-def Eval(x) -> Val:
- def _Eval(x,e) -> Val:
+def Eval(x:Ast|Val) -> Val:
+ def _Eval(e,x) -> Val:
   if type(x)==Val: return x
   if type(x)==str: return Val('v',x) if x in VERB else Val(Ty[t:=ty(x)],t(x))
   if type(x)==Ast:
    if not x.children:
-    r = _Eval(x.node,e)
+    r = _Eval(e,x.node)
     if r.t=='n': return e[r.v]
     return r
 
@@ -79,27 +82,43 @@ def Eval(x) -> Val:
 
    if x.node in COPULA:
     n = x.children[0].node#name
-    r = _Eval(x.children[1],e)#value
-    e[n] = r
+    r = _Eval(e,x.children[1])#value
+    e[n] = r#NOTE: reference semantics make this update visible to caller
     return r
 
-   if x.node in ('cmp','prj'): return x
-
+   if x.node in ('cmp','prj','{'): return x
    if x.node=='app':
-    r = _Eval(x.children[0],e)
-    i = _Eval(x.children[1],e)
+    x = formalize(lift_prj(x))
+    b = _Eval(e,x.children[0])#body hm... should it use {**e} instead of e?
+    a = _Eval(e,x.children[1])#args
+    if type(b)==Ast and b.node=='{':
+     match a:
+      case Val(t,v): args = [v]
+      case Ast('(',c)|Ast('[',c): args = [_Eval({**e},ci) for ci in c]
+      case Ast(_,c): args = [c]
+     formal = b.childre[0].children
+     for k,v in zip(args,formal):
+      if v=='_':
+       raise "aaaaah"
 
-    #TODO: what if r has no .t?
-    if r.t.isupper() and i.t=='i':
-     return v2('@',r,i)
+     print(b.children[0].children)
+     #lambda application (app (lam (prg x) (x)) 5)
+     #lambda args: (prg x)
+     #lambda body: (x)
+     #environment: {'x':5}
+     #evaluate lambda body with environment where each (prg x) is replaced by applied argument
 
-    print('app',x)
-    raise RuntimeError('nyi')
+    if type(b)==Val:
+     if b.t.isupper() and a.t=='a':
+      return v2('@',b,a)
+
+    raise RuntimeError(f'nyi: (app {x})')
 
    if x.node[0] in VERB:
-    k = [_Eval(c,e) for c in x.children[::(-1,1)[x.node in '(;']]]
+    k = [_Eval(e,c) for c in x.children[::(-1,1)[x.node in '(;']]]
+    print('verb',k)
     return (0,v1,v2)[len(x.children)](x.node,*k[::-1])
    else:
     raise RuntimeError(f'ast not recognized: {x}')
   raise RuntimeError('wat?!')
- return _Eval(x,{})
+ return _Eval({},x)

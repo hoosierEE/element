@@ -37,5 +37,5 @@ def formalize(a:Ast) -> Ast:
  if a.node=='{' and len(a.children)==1:#lambda without arg list
   if xyz := get_params(a.children[0]):#insert placeholders: xz ⇒ x_z
    xyz = ''.join(x if x in xyz else '_' for x,_ in zip('xyz',range(ord(max(xyz))-ord('w'))))
-  return Ast(a.node, Ast('[',*(map(Ast,filter(str,xyz)))), formalize(a.children[0]))#insert (prg x y z)
+  return Ast(a.node, Ast('[',*(map(Ast,filter(str,xyz)))), *map(formalize,a.children))#insert (prg x y z)
  return Ast(a.node, *map(formalize,a.children))
