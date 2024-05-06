@@ -28,10 +28,10 @@ def addimp(a:Ast) -> Ast:
  return Ast(a.node, *map(addimp,a.children)) if a.children else a
 
 def tolambda(a:Ast) -> Ast:
- '''convert projections and compositions to lambdas'''
+ '''convert projections to lambdas'''
  if a.node=='prj':
   if len(a.children)==1:
    return Ast('{',Ast('[',*map(Ast,'xy')),Ast(a.children[0],*map(Ast,'xy')))
   if len(a.children)==2:
    return Ast('{',Ast('[',Ast('x')),Ast(a.children[0],Ast('x'),a.children[1]))
- return a
+ return a#NOTE:this branch handles the literal "prj" and everything else
