@@ -1,6 +1,6 @@
 ADVERB = "'","/","\\"
+ASSIGN = ":","::"
 BS = "\\"
-COPULA = ":","::"
 CPAREN = ')','}',']'
 ENDEXP = '',';','\n'
 LF = "\n"

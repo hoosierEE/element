@@ -12,7 +12,7 @@ e.g: formalize(lift_prj(Parse(Scan("x+1"))))
 -    ⇒   (prj -)      ⇒     (lam (prg x y) (- x y))
 '''
 from Ast import Ast
-from Builtin import COPULA,VERB
+from Builtin import ASSIGN,VERB
 
 def lift_prj(a:Ast) -> Ast:
  '''projection ⇒ lambda'''
@@ -28,7 +28,7 @@ def lift_prj(a:Ast) -> Ast:
 def get_params(a:Ast) -> str:
  '''get x y z arguments from lambdas'''
  if a.node=='{': return ''
- if a.node in COPULA and a.children[0].node in 'xyz': return ''
+ if a.node in ASSIGN and a.children[0].node in 'xyz': return ''
  if a.node in [*'xyz']: return a.node
  return ''.join(sorted(get_params(x) for x in a.children))
 

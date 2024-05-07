@@ -1,6 +1,7 @@
 from Eval import *
 from Parser import *
 from Scanner import *
+from Semantic import *
 def test_expr(scan,parse):
  x = """
  input      ⇒ expected output (in s-expr form)
@@ -137,10 +138,12 @@ def test_expr(scan,parse):
  """[1:-1].splitlines()[1:]
 
  red,end = '\033[91m','\033[0m'
+ ok,total = 0,0
  for i,o in (map(str.strip,a.split('⇒')) for a in x if not a.strip().startswith('#')):
+  total += 1
   c = ''#comment
   if '#' in o: o,c = o.split('#')
-  try: o,x = o.strip(),parse(scan(i.strip()),0)#verbosity=0 (silent)
+  try: o,x = o.strip(),parse(scan(i.strip()),0); ok += 1
   except: print(f'Exception while parsing "{i}"'); continue
   if str(x)==o: continue
   wanted = f'{i} ⇒ {o}{red}{end}'
@@ -148,6 +151,7 @@ def test_expr(scan,parse):
   m = max(len(actual),len(wanted))
   print(f'{wanted:<{m}} ⌈expected⌉ {c}')
   print(f'{actual:<{m}} ⌊ {red}actual{end} ⌋','\n')
+ print(f'{ok} of {total} passed')
 
 
 def test_eval(scan,parse,_eval):
@@ -165,11 +169,13 @@ def test_eval(scan,parse,_eval):
  4,a:1 2 3   ⇒ [4, 1, 2, 3]:L
  4,a:1.0 2 3 ⇒ [4, 1.0, 2.0, 3.0]:L
  """[1:-1].splitlines()[1:]
+ ok,total = 0,0
  for i,o in (map(str.strip,a.split('⇒')) for a in x if not a.strip().startswith('#')):
+  total += 1
   c = ''
   if '#' in o: o,c = o.split('#')
-  try: o,x = o.strip(),_eval(parse(scan(i.strip()),0))
+  try: o,x = o.strip(),_eval(parse(scan(i.strip()),0)); ok += 1
   except: print(f'Exception evaluating "{i}"'); continue
   if str(x)==o: continue
   print(f'{i} ⇒ {x} (actual)')
-  print('expected:',o,)
+  print('expected:',o)

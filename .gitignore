@@ -10,3 +10,5 @@ __pycache__/
 
 tests/doctest.h
 a.out
+
+.DS_Store

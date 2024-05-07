@@ -1,6 +1,6 @@
 from Ast import Ast
-from Builtin import COPULA,VERB
-from Sema import lift_prj,formalize
+from Builtin import ASSIGN,VERB
+from Semantic import lift_prj,formalize
 class Sym(str):pass
 class Name(str):pass
 #Vectors; strand/list notation, or construct with ops:
@@ -60,65 +60,49 @@ def v2val(op:str,a:Val,b:Val) -> Val:
   case _: raise RuntimeError('nyi')
 
 def v2(op:str,a,b):
- if type(a)==type(b)==Val:
-  return v2val(op,a,b)
- # if type(a)==list and type(b)==Val:
- #  raise 'nyi'
+ if type(a)==type(b)==Val: return v2val(op,a,b)
  raise RuntimeError(f'nyi: {op} not defined for {a}{op}{b}')
 
-def Eval(x:Ast|Val) -> Val:
- def _Eval(e,x) -> Val:
-  if type(x)==Val: return x
-  if type(x)==str: return Val('v',x) if x in VERB else Val(Ty[t:=ty(x)],t(x))
-  if type(x)==Ast:
-   if not x.children:
-    r = _Eval(e,x.node)
-    if r.t=='n': return e[r.v]
-    return r
+def evl(x:Ast,e=None) -> Val:
+ e = e or {}
+ return Eval(e,formalize(lift_prj(x)))
 
-   if x.node=='vec':
-    t = ty(x.children)
-    return Val(Ty[t].upper(),[t(c.node) for c in x.children])
+def Eval(e,x) -> Val:
+ if type(x)==Val: return x
+ if type(x)==str: return Val('v',x) if x in VERB else Val(Ty[t:=ty(x)],t(x))
+ if type(x)==Ast:
+  if not x.children:
+   r = Eval(e,x.node)
+   if r.t=='n': return e[r.v]
+   return r
 
-   if x.node in COPULA:
-    n = x.children[0].node#name
-    r = _Eval(e,x.children[1])#value
-    e[n] = r#NOTE: reference semantics make this update visible to caller
-    return r
+  if x.node=='vec':
+   t = ty(x.children)
+   return Val(Ty[t].upper(),[t(c.node) for c in x.children])
 
-   if x.node in ('cmp','prj','{'): return x
-   if x.node=='app':
-    x = formalize(lift_prj(x))
-    b = _Eval(e,x.children[0])#body hm... should it use {**e} instead of e?
-    a = _Eval(e,x.children[1])#args
-    if type(b)==Ast and b.node=='{':
-     match a:
-      case Val(t,v): args = [v]
-      case Ast('(',c)|Ast('[',c): args = [_Eval({**e},ci) for ci in c]
-      case Ast(_,c): args = [c]
-     formal = b.childre[0].children
-     for k,v in zip(args,formal):
-      if v=='_':
-       raise "aaaaah"
+  if x.node in ASSIGN:
+   n = x.children[0].node#name
+   r = Eval(e,x.children[1])#value
+   e[n] = r#NOTE: reference semantics make this update visible to caller
+   return r
 
-     print(b.children[0].children)
-     #lambda application (app (lam (prg x) (x)) 5)
-     #lambda args: (prg x)
-     #lambda body: (x)
-     #environment: {'x':5}
-     #evaluate lambda body with environment where each (prg x) is replaced by applied argument
+  if x.node in ('cmp','prj','{'): return x
 
-    if type(b)==Val:
-     if b.t.isupper() and a.t=='a':
-      return v2('@',b,a)
+  if x.node in ('@','app'):#"app" always has 2 children  TODO: what about "@"?
+   b = Eval(e,x.children[0])#body  (...should it use {**e} instead of e?)
+   args = [Eval(e,xi) for xi in x.children[1].children] if x.children[1].node=='[' else [Eval(e,x.children[1])]
+   if type(b)==Ast and b.node=='{':
+    newenv = {a.node:v for a,v in zip(b.children[0].children,args)}
+    return Eval({**e,**newenv},b.children[1])
+   if type(b)==Val:
+    if b.t.isupper() and a.t=='a':
+     return v2('@',b,a)
 
-    raise RuntimeError(f'nyi: (app {x})')
+   raise RuntimeError(f'nyi: {x}')
 
-   if x.node[0] in VERB:
-    k = [_Eval(e,c) for c in x.children[::(-1,1)[x.node in '(;']]]
-    print('verb',k)
-    return (0,v1,v2)[len(x.children)](x.node,*k[::-1])
-   else:
-    raise RuntimeError(f'ast not recognized: {x}')
-  raise RuntimeError('wat?!')
- return _Eval({},x)
+  if x.node[0] in VERB:
+   k = [Eval(e,c) for c in x.children[::(-1,1)[x.node in '(;']]]
+   return (0,v1,v2)[len(x.children)](x.node,*k[::-1])
+  else:
+   raise RuntimeError(f'ast not recognized: {x}')
+ raise RuntimeError('wat?!')

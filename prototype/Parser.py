@@ -1,5 +1,5 @@
 from Ast import Ast
-from Builtin import ADVERB,COPULA,CPAREN,ENDEXP,LF,OPAREN,VERB,WHITESPACE
+from Builtin import ADVERB,ASSIGN,CPAREN,ENDEXP,LF,OPAREN,VERB,WHITESPACE
 import collections as C
 NIL = Ast('NIL')
 Op = C.namedtuple('Op','name arity')
@@ -88,7 +88,7 @@ def _Parse(t:list,verbose:int)->Ast:
       else: d.append(Ast(s.pop().name)); s.append(Op(k,2))
      else: s.append(Op(k,1))
      if s[-1].arity==2: pad(n)
-    elif c in COPULA:
+    elif c in ASSIGN:
      if n in CPAREN+ENDEXP: rq(Ast('prj',Ast(c),d.pop())); continue
      else: s.append(Op(c,2))
     elif c[0] in VERB:
