@@ -119,18 +119,28 @@ Some [[https://github.com/doctest/doctest/tree/master/doc/markdown#reference][do
 - [-] prototype implementation
   - [X] lex/scan/tokenize
   - [X] parse
-  - [ ] semantic analysis
-    - [ ] type inference
+  - [-] semantic analysis
+    - [ ] verbs
+    - [ ] iterators
     - [ ] type checking
-    - [ ] name binding
-    - [ ] other errors (arity, unused)
+    - [-] type inference
+      - [X] (int|float|string|symbol)
+      - [X] vec of (int|float|string|symbol)
+      - [X] list
+      - [ ] tensor
+      - [ ] dict
+      - [ ] table
+    - [X] name binding
+    - [X] function application
+    - [X] variable names and lexical scope
+    - [X] composition/projection =(2+)1=
+    - [X] projection ⇒ lambda
+    - [ ] composition ⇒ lambda
+    - [ ] errors (mutable, rank, unused, ...)
   - [-] codegen
     - [X] tree-walk interpreter
     - [X] simple arithmetic =1+2=
     - [X] array arithmetic =1 2+3 4=
-    - [ ] type inference
-    - [ ] variable names and lexical scope
-    - [ ] composition/projection =(2+)1=
     - [ ] iterators =+/1 2 3=
     - [ ] structural functions =3#"hi""world"=
 - [-] hardware accelerated implementation

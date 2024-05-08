@@ -16,13 +16,14 @@ from Builtin import ASSIGN,VERB
 
 def lift_prj(a:Ast) -> Ast:
  '''projection ⇒ lambda'''
+ ax,ay = Ast('x'),Ast('y')
  match a.node,len(a.children):
   case 'prj',1:
    if (v:=a.children[0].node)[0] in VERB and v.endswith(':'):
-    return Ast('{',Ast('[',Ast('x')), Ast(a.children[0],Ast('x')))
-   return Ast('{',Ast('[',*map(Ast,'xy')), Ast(a.children[0],*map(Ast,'xy')))
+    return Ast('{',Ast('[',ax), Ast(v,ax))
+   return Ast('{',Ast('[',ax,ay), Ast(v,ax,ay))
   case 'prj',2:
-   return Ast('{',Ast('[',Ast('x')), Ast(a.children[0],Ast('x'),lift_prj(a.children[1])))
+   return Ast('{',Ast('[',ax), Ast(a.children[0].node,lift_prj(a.children[1]),ax))
  return Ast(a.node, *map(lift_prj,a.children))
 
 def get_params(a:Ast) -> str:

@@ -65,6 +65,8 @@ def v2(op:str,a,b):
 
 def evl(x:Ast,e=None) -> Val:
  e = e or {}
+ x = formalize(lift_prj(x))
+ print(x)
  return Eval(e,formalize(lift_prj(x)))
 
 def Eval(e,x) -> Val:
@@ -86,7 +88,12 @@ def Eval(e,x) -> Val:
    e[n] = r#NOTE: reference semantics make this update visible to caller
    return r
 
-  if x.node in ('cmp','prj','{'): return x
+  if x.node in [*'(;']:#list or sequence
+   ks = [Eval(e,i) for i in x.children]
+   if x.node == ';': return ks[-1]#return the last of the sequence (progn)
+   return Val('L',ks)
+
+  if x.node in ('{','cmp','prj'): return x#defer eval of lambda, cmp, prj until/if they are applied.
 
   if x.node in ('@','app'):#"app" always has 2 children  TODO: what about "@"?
    b = Eval(e,x.children[0])#body  (...should it use {**e} instead of e?)
@@ -95,12 +102,13 @@ def Eval(e,x) -> Val:
     newenv = {a.node:v for a,v in zip(b.children[0].children,args)}
     return Eval({**e,**newenv},b.children[1])
    if type(b)==Val:
-    if b.t.isupper() and a.t=='a':
-     return v2('@',b,a)
+    #FIXME: "a" not defined
+    # a = args[0] # not quite...
+    if b.t.isupper() and a.t=='a': return v2('@',b,a)
 
    raise RuntimeError(f'nyi: {x}')
 
-  if x.node[0] in VERB:
+  if type(x.node)==str and x.node[0] in VERB:
    k = [Eval(e,c) for c in x.children[::(-1,1)[x.node in '(;']]]
    return (0,v1,v2)[len(x.children)](x.node,*k[::-1])
   else:
