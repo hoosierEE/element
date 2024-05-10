@@ -84,10 +84,16 @@ Planned features:
 - =x::y= assign (mutable) variable
 - No modified assignment operators. Use =a::a+1= instead of =a+:1=.
   Meanwhile, verb-plus-colon still invokes the unary version of that verb, so =a-:1= is =a (- 1)=.
-- Lists and function arguments evaluate left-to-right.
+- Lists and function arguments evaluate left-to-right, top-to-bottom.
   For example, =f[a+b;a:1;b:2]= or =(a+b;a:1;b:2)= are valid in K but not in Element.
-  In Element, =e1;e2= is two separate expressions evaluated left to right, and a list =(e1;e2)= collects the results of each of those expressions into a common container (the list itself).
+  In Element, =a;b= always parses as two separate expressions evaluated left to right regardless of being wrapped in any kind of parentheses.
   Alternatives: use =a:1;b:2;(a+b;a;b)= or =2_(a:1;b:2;a+b;a;b)=.
+# - Dictionary literals
+#   - ={a:2;b:5}= ⇔ ={`a:2;`b:5}= ⇔ =(`a;`b)!(2;5)= ⇔ =`a`b!2 5=
+#   - get: ={a:2}[`a]=
+#   - set: not supported for dict literals ={a:1}[`a]::2 /error=
+#   - set: have to bind (with =::=) to a name first: =d::{a:2;b:3}; d[`a]::40; d[`c]::42=
+#   - immutable dict can't be modified, even to add new keys: =i:{a:1}; i[`b]:3 /error=
 
 Aspirational features:
 - module system: =require x=, =provide x=

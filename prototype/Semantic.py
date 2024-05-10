@@ -1,20 +1,24 @@
 '''
 These transformations should happen before Eval.
-e.g: formalize(lift_prj(Parse(Scan("x+1"))))
+e.g: formalize(lamp(Parse(Scan("x+1"))))
 
         Parse                     formalize
 {1+x-3}   ⇒   (lam (+ 1 (- x 3)))     ⇒     (lam (prg x) (+ 1 (- x 3)))
 {x-y}     ⇒   (lam (+ x y))           ⇒     (lam (prg x y) (+ x y))
 {3}       ⇒   (lam 3)                 ⇒     (lam prg 3)
 
-   Parse           lift_prj
+   Parse           lamp
 3-   ⇒   (prj - 3)    ⇒     (lam (prg x) (- 3 x))
 -    ⇒   (prj -)      ⇒     (lam (prg x y) (- x y))
 '''
 from Ast import Ast
 from Builtin import ASSIGN,VERB
 
-def lift_prj(a:Ast) -> Ast:
+def lamc(a:Ast) -> Ast:
+ '''composition ⇒ lambda'''
+ ...
+
+def lamp(a:Ast) -> Ast:
  '''projection ⇒ lambda'''
  ax,ay = Ast('x'),Ast('y')
  match a.node,len(a.children):
@@ -23,8 +27,8 @@ def lift_prj(a:Ast) -> Ast:
     return Ast('{',Ast('[',ax), Ast(v,ax))
    return Ast('{',Ast('[',ax,ay), Ast(v,ax,ay))
   case 'prj',2:
-   return Ast('{',Ast('[',ax), Ast(a.children[0].node,lift_prj(a.children[1]),ax))
- return Ast(a.node, *map(lift_prj,a.children))
+   return Ast('{',Ast('[',ax), Ast(a.children[0].node,lamp(a.children[1]),ax))
+ return Ast(a.node, *map(lamp,a.children))
 
 def get_params(a:Ast) -> str:
  '''get x y z arguments from lambdas'''
