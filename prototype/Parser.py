@@ -1,5 +1,5 @@
 from Ast import Ast
-from Builtin import ADVERB,ASSIGN,CPAREN,ENDEXP,LF,OPAREN,VERB,WHITESPACE
+from Builtin import ADVERB,ASSIGN,CPAREN,ENDEXP,LF,OPAREN,VERB,VERBM,WHITESPACE
 import collections as C
 NIL = Ast('NIL')
 Op = C.namedtuple('Op','name arity')
@@ -8,6 +8,9 @@ def _Parse(t:list,verbose:int)->Ast:
  if not t: return
  z,b,s,d = len(t),[],[],[]
  noun = lambda x:type(x)==tuple or type(x)==str and x.replace('.','').replace('-','').isalnum()
+ # def noun(x:str) -> bool:
+ #  return type(x)==tuple or type(x)==str and x.replace('.','').replace('-','').isalnum()
+
  def debug(*args):#optional logging
   if verbose<1: return
   R = lambda x:'LF' if x==LF else str(x)
@@ -27,7 +30,8 @@ def _Parse(t:list,verbose:int)->Ast:
   if x in ENDEXP:
    if   len(k)>1 and k[1].node==x: k = [k[0],*k[1].children]
    elif len(k)>0 and k[0].node==x: k = [*k[0].children,*k[1:]]
-  if noun(x): d.append(Ast('app',Ast(x),*k))
+  # if x in ANDOR:                   d.append(Ast(x,*k))
+  if noun(x):                      d.append(Ast('app',Ast(x),*k))
   elif type(x)==Ast and k:         d.append(Ast('app',x,*k))
   else:                            d.append(Ast(x,*k))
   debug('rt',x,k)
@@ -62,9 +66,9 @@ def _Parse(t:list,verbose:int)->Ast:
      else: break
     elif c in ADVERB: x = s.pop(); s.append(Op(Ast(c,Ast(x.name)),x.arity)); x.arity==2 and pad(n)
     elif noun(c) or c[0] in '`"': d.append(Ast(c)); break
-    elif c[0] in VERB and n in CPAREN+ENDEXP:
+    elif c in VERB+VERBM and n in CPAREN+ENDEXP:
      d.append(Ast(c)) if s and s[-1].name in OPAREN else rq(Ast('prj',Ast(c))); break
-    elif c[0] in VERB and n in ADVERB: d.append(Ast(c)); break
+    elif c in VERB+VERBM and n in ADVERB: d.append(Ast(c)); break
     else: s.append(Op(c,1))
 
    while True:#binary
@@ -91,10 +95,10 @@ def _Parse(t:list,verbose:int)->Ast:
     elif c in ASSIGN:
      if n in CPAREN+ENDEXP: rq(Ast('prj',Ast(c),d.pop())); continue
      else: s.append(Op(c,2))
-    elif c[0] in VERB:
-     if c.endswith(':'):
-      if n in CPAREN+ENDEXP: raise SyntaxError(err(i,"can't project a prefix op"))
-      else: s.append(Op(c,1)); break
+    elif c in VERBM:
+     if n in CPAREN+ENDEXP: raise SyntaxError(err(i,"can't project a prefix op"))
+     else: s.append(Op(c,1)); break
+    elif c in VERB:
      if n in CPAREN+ENDEXP: rq(Ast('prj',Ast(c),d.pop())); continue
      else: s.append(Op(c,2))
     else:

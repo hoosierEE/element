@@ -1,21 +1,12 @@
+# TODO: simplify (prototype only)
+# get rid of integers
+# don't save type info; instead compute it on-demand
+# use plain Python values instead of Val class
 from Ast import Ast
 from Builtin import ASSIGN,VERB
 from Semantic import lift_prj,formalize
 class Sym(str):pass
 class Name(str):pass
-#Vectors; strand/list notation, or construct with ops:
-#1 2 3 ⇒ [1, 2, 3]⊂I
-#1 2.0 ⇒ [1.0, 2.0]⊂F
-#(1.0;2.0) ⇒ [1.0, 2.0]⊂F
-#1,2   ⇒ [1, 2]⊂I
-#List types
-#any type, any shape ("ab";1)⊂L
-#1 type, any shape (1;2;3)⊂LI  (0;((1;2);3);4)⊂LI
-#tensor (1 type, defined shape): ((1;2;3);(4;5;6))⊂I(2;3)
-#Dict types
-#generic {a:1;b:("hi";"world")}⊂D
-#unitype {a:1;b:(2;3)}⊂DI  {a:1.0;b:(2.0;3.0)}⊂DF
-#table {a:(1;2);b:(3;4)}⊂TI
 Ty = dict(zip((str,Sym,Name,int,float,dict,list),'csnifDL'))
 Yt = {b:a for a,b in Ty.items()}
 class Val:
@@ -48,16 +39,29 @@ def v1(op:str,val:Val):
 
 def v2val(op:str,a:Val,b:Val) -> Val:
  match (op,a.t,b.t):
+  #TODO: handle numeric types better, 'min' is brittle
   case ['-','f'|'i','f'|'i']: return Val(min(a.t,b.t),a.v-b.v)
   case ['-','f'|'i','F'|'I']: return Val(min(a.t,b.t).upper(),[a.v-x for x in b.v])
   case ['-','F'|'I','f'|'i']: return Val(min(a.t,b.t).upper(),[x-b.v for x in a.v])
   case ['-','F'|'I','F'|'I']: return Val(min(a.t,b.t).upper(),[x-y for x,y in zip(a.v,b.v)])
-  case [',','f'|'i','f'|'i']: return Val(min(a.t,b.t).upper(),[a.v,b.v])
-  case [',','F'|'I','f'|'i']: return Val(min(a.t,b.t).upper(),[*a.v,b.v])
-  case [',','f'|'i','F'|'I']: return Val(min(a.t,b.t).upper(),[a.v,*b.v])
+
+  # case [',','f'|'i','f'|'i']: return Val(min(a.t,b.t).upper(),[a.v,b.v])
+  # case [',','F'|'I','f'|'i']: return Val(min(a.t,b.t),[*a.v,b.v])
+  # case [',','f'|'i','F'|'I']: return Val(min(a.t,b.t),[a.v,*b.v])
+  case [',',t,u] if t==u and t.islower(): return Val(t.upper(),[a.v,b.v])
+  case [',',t,u] if t==u and t.isupper(): return Val(t,[*a.v,*b.v])
+  case [',',t,u] if t.isupper() and u.islower(): return Val('L',[*a.v,b.v])
+  case [',',t,u] if t.islower() and u.isupper(): return Val('L',[*a.v,b.v])
+  case [',',t,u]: return Val('L',[*a.v,*b.v])
+
+  # case [',',t,u]:
+  #  if hasattr(a.v,'__len__') and hasattr(b.v,'__len__'): return Val('L',[*a.v,*b.v])
+  #  if hasattr(a.v,'__len__'):                            return Val('L',[*a.v,b.v])
+  #  if hasattr(b.v,'__len__'):                            return Val('L',[a.v,*b.v])
+  #  return Val(min(t,u),[a.v,b.v])
   case ['@','L','i']: return Val(Ty[type(r:=a.v[b.v])],r)#TODO: outdex
   case ['@',t,'i'] if t.isupper(): return Val(Ty[type(r:=a.v[b.v])],r)#TODO: outdex
-  case _: raise RuntimeError('nyi')
+  case _: raise RuntimeError(f'nyi: {op} {a} {b}')
 
 def v2(op:str,a,b):
  if type(a)==type(b)==Val: return v2val(op,a,b)
@@ -66,8 +70,7 @@ def v2(op:str,a,b):
 def evl(x:Ast,e=None) -> Val:
  e = e or {}
  x = formalize(lift_prj(x))
- print(x)
- return Eval(e,formalize(lift_prj(x)))
+ return Eval(e,x)
 
 def Eval(e,x) -> Val:
  if type(x)==Val: return x

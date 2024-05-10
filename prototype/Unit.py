@@ -13,7 +13,6 @@ def test_expr(scan,parse):
  +(-)       ⇒ (+ -)
  a:b        ⇒ (: a b)
  (a:)2      ⇒ (app (prj : a) 2)
- a+:        ⇒ None
  (-+:)      ⇒ (cmp - (prj +:))
  -+:        ⇒ (cmp - (prj +:))
  a::b       ⇒ (:: a b)
@@ -151,10 +150,22 @@ def test_expr(scan,parse):
   m = max(len(actual),len(wanted))
   print(f'{wanted:<{m}} ⌈expected⌉ {c}')
   print(f'{actual:<{m}} ⌊ {red}actual{end} ⌋','\n')
- print(f'{ok} of {total} passed')
 
 
-def test_eval(scan,parse,_eval):
+def test_exception(scan,parse):
+ x = """
+ a+:
+ (a+:)
+ ())
+ """[1:-1].splitlines()
+ for i in map(str.strip,x):
+  try:
+   parse(scan(i))
+   raise SyntaxError(f"Should have raised SyntaxError, but didn't: {i}")
+  except SyntaxError: continue
+
+
+def test_eval(scan,parse,evil):
  x = """
  input       ⇒ expected output (in s-expr form)
  2           ⇒ 2:i
@@ -166,7 +177,7 @@ def test_eval(scan,parse,_eval):
  1 2         ⇒ [1, 2]:I
  1 2.        ⇒ [1.0, 2.0]:F
  a:1 2 3     ⇒ [1, 2, 3]:I
- 4,a:1 2 3   ⇒ [4, 1, 2, 3]:L
+ 4,a:1 2 3   ⇒ [4, 1, 2, 3]:I
  4,a:1.0 2 3 ⇒ [4, 1.0, 2.0, 3.0]:L
  """[1:-1].splitlines()[1:]
  ok,total = 0,0
@@ -174,8 +185,21 @@ def test_eval(scan,parse,_eval):
   total += 1
   c = ''
   if '#' in o: o,c = o.split('#')
-  try: o,x = o.strip(),_eval(parse(scan(i.strip()),0)); ok += 1
-  except: print(f'Exception evaluating "{i}"'); continue
+  try:
+   o,x = o.strip(),evil(parse(scan(i.strip()),0))
+   ok += 1
+  except Exception as e:
+   print(f'Exception ({e}) evaluating "{i}"')
+   continue
   if str(x)==o: continue
   print(f'{i} ⇒ {x} (actual)')
-  print('expected:',o)
+  print(f'{"expected:":>{len(i)}}   {o}')
+
+
+def test(scan,parse,evil):
+ print("test_expr:")
+ test_expr(scan,parse)
+ print("test_exception:")
+ test_exception(scan,parse)
+ print("test_eval:")
+ test_eval(scan,parse,evil)
