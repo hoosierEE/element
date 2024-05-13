@@ -14,12 +14,8 @@ e.g: formalize(lamp(Parse(Scan("x+1"))))
 from Ast import Ast
 from Builtin import ASSIGN,VERB
 
-def lamc(a:Ast) -> Ast:
- '''composition ⇒ lambda'''
- ...
-
-def lamp(a:Ast) -> Ast:
- '''projection ⇒ lambda'''
+def lam_from_prj(a:Ast) -> Ast:
+ '''convert projection to lambda'''
  ax,ay = Ast('x'),Ast('y')
  match a.node,len(a.children):
   case 'prj',1:
@@ -27,8 +23,8 @@ def lamp(a:Ast) -> Ast:
     return Ast('{',Ast('[',ax), Ast(v,ax))
    return Ast('{',Ast('[',ax,ay), Ast(v,ax,ay))
   case 'prj',2:
-   return Ast('{',Ast('[',ax), Ast(a.children[0].node,lamp(a.children[1]),ax))
- return Ast(a.node, *map(lamp,a.children))
+   return Ast('{',Ast('[',ax), Ast(a.children[0].node,lam_from_prj(a.children[1]),ax))
+ return Ast(a.node, *map(lam_from_prj,a.children))
 
 def get_params(a:Ast) -> str:
  '''get x y z arguments from lambdas'''

@@ -4,7 +4,7 @@
 # use plain Python values instead of Val class
 from Ast import Ast
 from Builtin import ASSIGN,VERB
-from Semantic import lamp,formalize
+from Semantic import lam_from_prj,formalize
 class Sym(str):pass
 class Name(str):pass
 class Num(float):pass
@@ -56,7 +56,7 @@ def v2(op,x,y):
 
 def evl(x:Ast,e=None) -> object:
  e = e or {}
- x = formalize(lamp(x))
+ x = formalize(lam_from_prj(x))
  return Eval(e,x)
 
 def Eval(e:dict,x:Ast) -> object:
