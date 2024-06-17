@@ -76,6 +76,8 @@ def test_expr(scan,parse):
  ;b         ⇒ (seq NIL b)
  []         ⇒ (prg NIL)
  [x]        ⇒ (prg x)
+ a.b.c      ⇒ (. a (. b c))
+ a.b - 1    ⇒ (- (. a b) 1)
  a          ⇒ a
  a(b)       ⇒ (app a b)
  a++b       ⇒ (+ a (+ b))
@@ -196,10 +198,10 @@ def test_eval(scan,parse,evil):
   print(f'{"expected:":>{len(i)}}   {o}')
 
 
-def test(scan,parse,evil):
- print("test_expr:")
- test_expr(scan,parse)
- print("test_exception:")
- test_exception(scan,parse)
- print("test_eval:")
- test_eval(scan,parse,evil)
+# def test(scan,parse,evil):
+#  print("test_expr:")
+#  test_expr(scan,parse)
+#  print("test_exception:")
+#  test_exception(scan,parse)
+#  print("test_eval:")
+#  test_eval(scan,parse,evil)

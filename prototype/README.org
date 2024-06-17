@@ -2,28 +2,29 @@
 This folder contains experiments used to guide Element development.
 Currently the focus is on an Element interpreter, written in Python to prioritize quick iteration over run-time performance.
 
+** Ast.py
+The =Ast= class defines an abstract syntax tree (AST) node and its pretty-printer.
+An Ast node is a (required) name and (optional) children.
+These are accessible by field names (=Ast.name= and =Ast.children=) or by tuple index (=x.name= is =x[0]=).
+This duality enables pattern matching Ast nodes as tuples.
+
 ** Scanner.py
-This breaks an input string into a list.
-Most list elements are strings, but some are lists of strings representing lists in the source.
+This module breaks an input string into a list of values, where each value is either a string or a tuple of strings.
+When the scanner encounters strand notation, it groups all the elements of the strand into a list of strings:
 - =2+3= ⇒ =['2', '+', '3']=
 - =1 2+3 4= ⇒ =[['1', '2'], '+', ['3', '4']]=
 - =2+`a`b``c= ⇒ =['2', '+', ['`a', '`b', '`', '`c']]=
-In particular, the scanner recognizes /stranding/ of certain kinds of values:
-- symbols like =`a= or =`=
-- strings like "hi world" or "x"
-- numbers like =1= or =3.1415=
-Numbers form strands when separated by spaces, while strings and symbols may strand together without spaces.
-Stranding two strings without spaces as in "hi""world" results in the list =["hi","world"]=.
-The /strand/ concept in array languages is simply a minimal syntax for creating 1-dimensional lists.
-Creating nested list literals requires parentheses as in =(1;(2;3);4)=.
-
-** Ast.py
-The =Ast= class defines an abstract syntax tree (AST) node and its pretty-printer.
-An =Ast= node has a name and zero or more additional nodes as its =children=.
+- ="a" "hello""""world"= ⇒ =['"a"', '"hello"', '""', '"world"']=
+Numbers separated by spaces form strands, but spaces are optional in symbol or string strands.
+A backtick (=`=) not followed by a letter or double-quote is equivalent to ~`""~.
+Stranding two strings without spaces as in "hi""world" results in the list =["hi", "world"]=.
+Strands are lightweight and optional syntax to create 1-dimensional lists.
+You can create a 1-d list without stranding with the "join" primitive function: =1,2= ⇒ =['1', '2']=, while nested lists always require parentheses as in =(1;(2;3);4)=.
 
 ** Parser.py
 This parser is a bottom-up style parser originally inspired by [[the Double-E method]].
 After a while I removed the operator precedence logic from this parser since K operators have uniform precedence.
+# FIXME: "a.b.c + 1" should be (+ (. a (. b c)) 1) but currently is (. a (. b (+ c 1)))
 A large portion of this parser now deals with juxtaposition, projection, and composition within the context of the usual application of values to operators, function calls, and parentheses.
 - juxtaposition (implied application)
   + =a b c= ⇒ =(a (b c))=
@@ -53,8 +54,20 @@ For example ="ab"/3= is an invalid expression in the language but parses as =((f
 The evaluator will handle this task.
 
 ** Eval.py
-TODO
+This section is TBD.
 
-** unit_test.py
+- Interesting paper: https://arxiv.org/pdf/1109.0781
+- Interesting statically typed compiled language: https://aardappel.github.io/lobster/README_FIRST.html
+
+** Test.py
 This file aims to include unit tests for the major parts of the prototype.
 Currently it has about 100 parser tests comparing a string input with expected Ast output.
+
+* GPU Support
+This section is TBD but here are some potentially useful links:
+- [[https://cupy.dev/][CuPy]]
+- [[https://github.com/NVIDIA/warp][Warp]]
+- [[https://docs.taichi-lang.org/][Taichi]]
+- [[https://numba.pydata.org/][Numba]]
+- [[https://docs.exaloop.io/codon][Codon]]
+- [[https://github.com/HazyResearch/ThunderKittens][ThunderKittens]]

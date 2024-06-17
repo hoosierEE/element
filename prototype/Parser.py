@@ -28,8 +28,8 @@ def _Parse(t:list,verbose:int)->Ast:
  def rt(x,arity):#(r)educe (t)op of stack based on x's arity
   k = [d.pop() for _ in range(min(len(d),arity))][::-1]
   if x in ENDEXP:
-   if   len(k)>1 and k[1].node==x: k = [k[0],*k[1].children]
-   elif len(k)>0 and k[0].node==x: k = [*k[0].children,*k[1:]]
+   if   len(k)>1 and k[1][0]==x: k = [k[0],*k[1][1]]
+   elif len(k)>0 and k[0][0]==x: k = [*k[0][1],*k[1:]]
   # if x in ANDOR:                   d.append(Ast(x,*k))
   if noun(x):                      d.append(Ast('app',Ast(x),*k))
   elif type(x)==Ast and k:         d.append(Ast('app',x,*k))
@@ -37,8 +37,8 @@ def _Parse(t:list,verbose:int)->Ast:
   debug('rt',x,k)
 
  def rp(x:Op):#(r)educe (p)aren, e.g: reduce(OPAREN); rp(s.pop())
-  k = Ast(x.name,*(y.children if (y:=d.pop()).node==';' else (y,)))
-  if x.name=='(' and len(k.children)==1 and k.children[0]!=NIL: k = k.children[0]
+  k = Ast(x.name,*(y[1] if (y:=d.pop())[0]==';' else (y,)))
+  if x.name=='(' and len(k[1])==1 and k[1][0]!=NIL: k = k[1][0]
   if x.name=='[' and x.arity==2: k = Ast('app',d.pop(),k)
   d.append(k); debug('rp',x,k)
 
@@ -48,7 +48,7 @@ def _Parse(t:list,verbose:int)->Ast:
    k = Ast('cmp',Ast('prj',Ast(x),d.pop()) if a==2 else Ast(x),k)
   d.append(k); debug('rq')
 
- def loop(i=0) -> int|None:#return error token index or None
+ def loop(i=0) -> int|None:#return index of error-causing token (if any), else None
   nn = lambda i:(t[i+1] if type(t[i+1])==str else 1) if i+1<z else ''
   while True:
    while True:#unary

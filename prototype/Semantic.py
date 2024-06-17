@@ -1,18 +1,33 @@
-'''
-These transformations should happen before Eval.
-e.g: formalize(lamp(Parse(Scan("x+1"))))
-
-        Parse                     formalize
-{1+x-3}   ⇒   (lam (+ 1 (- x 3)))     ⇒     (lam (prg x) (+ 1 (- x 3)))
-{x-y}     ⇒   (lam (+ x y))           ⇒     (lam (prg x y) (+ x y))
-{3}       ⇒   (lam 3)                 ⇒     (lam prg 3)
-
-   Parse           lamp
-3-   ⇒   (prj - 3)    ⇒     (lam (prg x) (- 3 x))
--    ⇒   (prj -)      ⇒     (lam (prg x y) (- x y))
-'''
 from Ast import Ast
 from Builtin import ASSIGN,VERB
+from dataclasses import dataclass
+
+type Sym = str
+type Name = str
+type Builtin = str
+
+def ty(x:str) -> type:
+ if x[0] in '`"': return (str,Sym)[x[0]=='`']
+ if x.replace('.','').replace('-','').isnumeric(): return float if '.' in x else int
+ if x=='NIL': return type(None)
+ if x in ASSIGN+VERB: return Builtin
+ return Name
+
+@dataclass
+class Val:
+ v:Ast
+ t:type
+ def __repr__(s): return f'{s.v}:{repr(s.t)[8:-2]}'
+
+def infer(a:Ast) -> Val:
+ '''infer types from literal expressions'''
+ match (a.node,a.children):
+  case ('vec',b): return Val(a,ty(b[0].node))
+  case ('{',p,b): return Ast(a.node,*map(infer,a.children))
+  case ('[',()): return Val(a.node,'NIL')
+  case (node,()): return Val(node,ty(node))
+  case (node,children): return Ast(a.node,*map(infer,children))
+  case _: raise SyntaxError(f'unmatched: {a}')
 
 def lam_from_prj(a:Ast) -> Ast:
  '''convert projection to lambda'''
@@ -40,3 +55,6 @@ def formalize(a:Ast) -> Ast:
    xyz = ''.join(x if x in xyz else '_' for x,_ in zip('xyz',range(ord(max(xyz))-ord('w'))))
   return Ast(a.node, Ast('[',*(map(Ast,filter(str,xyz)))), *map(formalize,a.children))#insert (prg x y z)
  return Ast(a.node, *map(formalize,a.children))
+
+def analyze(a:Ast) -> Ast|Val:
+ return infer(formalize(lam_from_prj(a)))

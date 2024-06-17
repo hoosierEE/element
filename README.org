@@ -47,6 +47,7 @@ K is a vector language descended from APL, with hints of lisp.
 ** typical K features
 Most Ks have:
 - 1-dimensional vectors, nested lists, dictionaries
+- value semantics
 - an interpreter
 - eager evaluation
 - simple scoping rules (names are exclusively local or global)
@@ -80,20 +81,19 @@ Planned features:
 - lexical scope
 - closures
 - string data type (distinct from "list of char") as in [[https://codeberg.org/anaseto/goal/src/branch/master][goal]]
+- short-circuiting =and= and =or= keywords also from [[https://codeberg.org/anaseto/goal/src/branch/master][goal]]
 - =x:y= assign (immutable) variable
 - =x::y= assign (mutable) variable
 - No modified assignment operators. Use =a::a+1= instead of =a+:1=.
-  Meanwhile, verb-plus-colon still invokes the unary version of that verb, so =a-:1= is =a (- 1)=.
+  Meanwhile, verb-plus-colon still invokes the unary version of that verb, so =a-:b= is =a(-b)=.
+- No partial assignment to containers. If you assign the name =a= with =a::1 2 3=, then =a[0]::99= is invalid. Use =@= (amend) instead, and re-assign the whole container: =a::@[a;0;99]=. To improve performance, the implementation is free to reuse the original memory for =a= instead of making a copy.
 - Lists and function arguments evaluate left-to-right, top-to-bottom.
   For example, =f[a+b;a:1;b:2]= or =(a+b;a:1;b:2)= are valid in K but not in Element.
   In Element, =a;b= always parses as two separate expressions evaluated left to right regardless of being wrapped in any kind of parentheses.
   Alternatives: use =a:1;b:2;(a+b;a;b)= or =2_(a:1;b:2;a+b;a;b)=.
-# - Dictionary literals
-#   - ={a:2;b:5}= ⇔ ={`a:2;`b:5}= ⇔ =(`a;`b)!(2;5)= ⇔ =`a`b!2 5=
-#   - get: ={a:2}[`a]=
-#   - set: not supported for dict literals ={a:1}[`a]::2 /error=
-#   - set: have to bind (with =::=) to a name first: =d::{a:2;b:3}; d[`a]::40; d[`c]::42=
-#   - immutable dict can't be modified, even to add new keys: =i:{a:1}; i[`b]:3 /error=
+# - Dictionary literals are a sequence of assignments enclosed in =[]= similar to [[https://kparc.io/k/][Shakti]]: =[a:2+q;b:5]= ⇔ =[`a:2;`b:5]= ⇔ =(`a;`b)!(2;5)= ⇔ =`a`b!2 5=
+#   - =[a:1;42]= is not a dict literal because =42= is not an assignment
+#   -
 
 Aspirational features:
 - module system: =require x=, =provide x=
