@@ -22,7 +22,7 @@ Strands are lightweight and optional syntax to create 1-dimensional lists.
 You can create a 1-d list without stranding with the "join" primitive function: =1,2= ⇒ =['1', '2']=, while nested lists always require parentheses as in =(1;(2;3);4)=.
 
 ** Parser.py
-This parser is a bottom-up style parser originally inspired by [[the Double-E method]].
+This parser is a bottom-up style parser originally inspired by [[https://github.com/erikeidt/erikeidt.github.io/blob/master/The-Double-E-Method.md][the Double-E method]].
 After a while I removed the operator precedence logic from this parser since K operators have uniform precedence.
 # FIXME: "a.b.c + 1" should be (+ (. a (. b c)) 1) but currently is (. a (. b (+ c 1)))
 A large portion of this parser now deals with juxtaposition, projection, and composition within the context of the usual application of values to operators, function calls, and parentheses.
