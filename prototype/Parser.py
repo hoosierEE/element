@@ -8,8 +8,6 @@ def _Parse(t:list,verbose:int)->Ast:
  if not t: return
  z,b,s,d = len(t),[],[],[]
  noun = lambda x:type(x)==tuple or type(x)==str and x.replace('.','').replace('-','').isalnum()
- # def noun(x:str) -> bool:
- #  return type(x)==tuple or type(x)==str and x.replace('.','').replace('-','').isalnum()
 
  def debug(*args):#optional logging
   if verbose<1: return
@@ -25,15 +23,15 @@ def _Parse(t:list,verbose:int)->Ast:
  def reduce(until:str):#reduce until (until) matches
   while s and str(s[-1].name) not in until: rt(*s.pop())
 
- def rt(x,arity):#(r)educe (t)op of stack based on x's arity
+ def rt(x,arity):#(r)educe (t)op of stack based on x's arity (and precedence)
   k = [d.pop() for _ in range(min(len(d),arity))][::-1]
   if x in ENDEXP:
    if   len(k)>1 and k[1][0]==x: k = [k[0],*k[1][1]]
    elif len(k)>0 and k[0][0]==x: k = [*k[0][1],*k[1:]]
-  # if x in ANDOR:                   d.append(Ast(x,*k))
-  if noun(x):                      d.append(Ast('app',Ast(x),*k))
-  elif type(x)==Ast and k:         d.append(Ast('app',x,*k))
-  else:                            d.append(Ast(x,*k))
+  # if x in ANDOR:           d.append(Ast(x,*k)) #TODO: (and;or) short-circuiting operators
+  if noun(x):              d.append(Ast('app',Ast(x),*k))
+  elif type(x)==Ast and k: d.append(Ast('app',x,*k))
+  else:                    d.append(Ast(x,*k))
   debug('rt',x,k)
 
  def rp(x:Op):#(r)educe (p)aren, e.g: reduce(OPAREN); rp(s.pop())
@@ -97,12 +95,13 @@ def _Parse(t:list,verbose:int)->Ast:
      else: s.append(Op(c,2))
     elif c in VERBM:
      if n in CPAREN+ENDEXP: raise SyntaxError(err(i,"can't project a prefix op"))
-     else: s.append(Op(c,1)); break
+     else: s.append(Op(c,1))
     elif c in VERB:
+     if c!='.' and s and s[-1]==Op('.',2): reduce('')#precedence: a.b+1 == (a.b)+1
      if n in CPAREN+ENDEXP: rq(Ast('prj',Ast(c),d.pop())); continue
      else: s.append(Op(c,2))
     else:
-     s.append(Op(d.pop(),1))#whatever this was, it wasn't a noun
+     s.append(Op(d.pop(),1))#top of d wasn't a noun after all
      if noun(c) or c[0] in '`"': d.append(Ast(c)); continue
      pad(n); s.append(Op(c,1))
     break

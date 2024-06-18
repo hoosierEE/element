@@ -78,6 +78,7 @@ def test_expr(scan,parse):
  [x]        ⇒ (prg x)
  a.b.c      ⇒ (. a (. b c))
  a.b - 1    ⇒ (- (. a b) 1)
+ 1 - a.b    ⇒ (- 1 (. a b))
  a          ⇒ a
  a(b)       ⇒ (app a b)
  a++b       ⇒ (+ a (+ b))
