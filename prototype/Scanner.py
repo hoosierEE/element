@@ -1,5 +1,5 @@
 from typing import List,Tuple
-from Builtin import BS,VERB,LF,WHITESPACE
+from .Builtin import BS,VERB,LF,WHITESPACE
 def Scan(expr:str)->List[str|Tuple[str]]:
  '''
  Tokenizes a string.

@@ -1,5 +1,5 @@
-from Ast import Ast
-from Builtin import ADVERB,ASSIGN,CPAREN,ENDEXP,LF,OPAREN,VERB,VERBM,WHITESPACE
+from .Ast import Ast
+from .Builtin import ADVERB,ASSIGN,CPAREN,ENDEXP,LF,OPAREN,VERB,VERBM,WHITESPACE
 import collections as C
 NIL = Ast('NIL')
 Op = C.namedtuple('Op','name arity')
@@ -86,7 +86,8 @@ def _Parse(t:list,verbose:int)->Ast:
      k = Ast(c,d.pop())#bind adverb to whatever
      while n in ADVERB: k,i,n = Ast(n,k),i+1,nn(i)
      if s:
-      if str(s[-1].name)[0] in VERB+OPAREN: s.append(Op(k,1))
+      debug('adverb')
+      if str(s[-1].name)[0] in ASSIGN+VERB+OPAREN: s.append(Op(k,1))
       else: d.append(Ast(s.pop().name)); s.append(Op(k,2))
      else: s.append(Op(k,1))
      if s[-1].arity==2: pad(n)

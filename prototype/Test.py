@@ -1,7 +1,7 @@
-from Eval import *
-from Parser import *
-from Scanner import *
-from Semantic import *
+from .Eval import *
+from .Parser import *
+from .Scanner import *
+from .Semantic import *
 def test_expr(scan,parse):
  x = """
  input      ⇒ expected output (in s-expr form)
@@ -16,6 +16,7 @@ def test_expr(scan,parse):
  (-+:)      ⇒ (cmp - (prj +:))
  -+:        ⇒ (cmp - (prj +:))
  a::b       ⇒ (:: a b)
+ a:f/y      ⇒ (: a (app (fld f) y))
  1 2+       ⇒ (prj + (vec 1 2))
  1 2+3 4    ⇒ (+ (vec 1 2) (vec 3 4))
  1 2+``a    ⇒ (+ (vec 1 2) (vec ` `a))

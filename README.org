@@ -1,13 +1,15 @@
 * Element
-Combining the most delightful parts of K with good ideas from functional and mainstream programming languages.
+/A data-oriented language for parallel hardware./
 
-- What: a close descendant of [[https://en.wikipedia.org/wiki/K_(programming_language)][K]] (and [[https://codeberg.org/anaseto/goal/src/branch/master][Goal]]) with implicit multi-core/GPU acceleration.
-- Why: fun?
-- How: Python prototype, then "for real" in CUDA/C++ (or perhaps [[https://ziglang.org/download/0.11.0/release-notes.html#GPGPU][Zig]] or [[https://pkg.odin-lang.org/vendor/OpenGL/][Odin]]?)
-- Dream: a fast DSL for data-intensive kernels embedded in a distributed system environment like [[https://gleam.run/][Gleam]].
+- what: syntax and semantics based on [[https://en.wikipedia.org/wiki/K_(programming_language)][K]] (and [[https://codeberg.org/anaseto/goal/src/branch/master][Goal]]) with implicit multi-core and GPU acceleration
+- why: fun?
+- how: first build a Python prototype, then implement in CUDA/C++ (or perhaps [[https://ziglang.org/download/0.11.0/release-notes.html#GPGPU][Zig]] or [[https://pkg.odin-lang.org/vendor/OpenGL/][Odin]]?)
+- maybe one day: a fast DSL for data-intensive kernels embedded in a distributed system environment like [[https://gleam.run/][Gleam]]
+
+keywords: "array-oriented" "interpreted" "functional" "automatic memory management"
 
 ** types
-- base types - int, float, string, symbol
+- builtin types - int, float, string, symbol
 - compound types
  - list-like
    - tensor - same type, N dimensional
@@ -84,20 +86,18 @@ Planned features:
 - short-circuiting =and= and =or= keywords also from [[https://codeberg.org/anaseto/goal/src/branch/master][goal]]
 - =x:y= assign (immutable) variable
 - =x::y= assign (mutable) variable
+- Transitive mutability - parts of mutable structures are mutable, parts of immutable structures are immutable.
 - No modified assignment operators. Use =a::a+1= instead of =a+:1=.
-  Meanwhile, verb-plus-colon still invokes the unary version of that verb, so =a-:b= is =a(-b)=.
-- No partial assignment to containers. If you assign the name =a= with =a::1 2 3=, then =a[0]::99= is invalid. Use =@= (amend) instead, and re-assign the whole container: =a::@[a;0;99]=. To improve performance, the implementation is free to reuse the original memory for =a= instead of making a copy.
-- Lists and function arguments evaluate left-to-right, top-to-bottom.
+  Meanwhile, verb-then-colon is still "force unary", so =a-:b= is =a(-b)=.
+- In Element, =a;b= is always two separate expressions evaluated left to right regardless of context.
+  This is most noticeable when you have assignments in lists or function calls.
   For example, =f[a+b;a:1;b:2]= or =(a+b;a:1;b:2)= are valid in K but not in Element.
-  In Element, =a;b= always parses as two separate expressions evaluated left to right regardless of being wrapped in any kind of parentheses.
-  Alternatives: use =a:1;b:2;(a+b;a;b)= or =2_(a:1;b:2;a+b;a;b)=.
-# - Dictionary literals are a sequence of assignments enclosed in =[]= similar to [[https://kparc.io/k/][Shakti]]: =[a:2+q;b:5]= ⇔ =[`a:2;`b:5]= ⇔ =(`a;`b)!(2;5)= ⇔ =`a`b!2 5=
-#   - =[a:1;42]= is not a dict literal because =42= is not an assignment
-#   -
 
 Aspirational features:
 - module system: =require x=, =provide x=
-- =\cd= etc. provided by REPL, not runtime
+- REPL-specific:
+  - =\cd some/other/directory=
+  - =delete= function to forget a defined variable
 
 * Install
 Compile for GPU with NVIDIA's =nvcc= compiler:
@@ -126,13 +126,15 @@ Some [[https://github.com/doctest/doctest/tree/master/doc/markdown#reference][do
   - [X] lex/scan/tokenize
   - [X] parse
   - [-] semantic analysis
-    - [ ] verbs
+    - [ ] rank polymorphic verbs
     - [ ] iterators
     - [ ] type checking
     - [-] type inference
-      - [X] (int|float|string|symbol)
-      - [X] vec of (int|float|string|symbol)
+      - [X] primitive types (int|float|string|symbol)
+      - [X] vec
       - [X] list
+      - [ ] expression
+      - [ ] lambda
       - [ ] tensor
       - [ ] dict
       - [ ] table
@@ -143,18 +145,15 @@ Some [[https://github.com/doctest/doctest/tree/master/doc/markdown#reference][do
     - [X] projection ⇒ lambda
     - [ ] composition ⇒ lambda
     - [ ] errors (mutable, rank, unused, ...)
-  - [-] codegen
-    - [X] tree-walk interpreter
+  - [-] code generation
+    - [ ] tree-walk interpreter
     - [X] simple arithmetic =1+2=
     - [X] array arithmetic =1 2+3 4=
     - [ ] iterators =+/1 2 3=
-    - [ ] structural functions =3#"hi""world"=
-- [-] hardware accelerated implementation
-  - [X] lex/scan/tokenize
-  - [ ] parse
-  - [ ] semantic analysis
-  - [ ] optimization
-  - [ ] codegen
+    - [ ] structural functions =4 3#!5=
+- [ ] hardware accelerated implementation
+  - [ ] full test suite compatibility with prototype
+  - [ ] benchmarks showing it is faster
 - [ ] stable release(s)
   - [ ] pick a version numbering system (and stick to it)
   - [ ] formal grammar

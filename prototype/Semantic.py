@@ -1,5 +1,5 @@
-from Ast import Ast
-from Builtin import ASSIGN,VERB
+from .Ast import Ast
+from .Builtin import ASSIGN,VERB
 from dataclasses import dataclass
 
 type Sym = str
@@ -10,14 +10,17 @@ def ty(x:str) -> type:
  if x[0] in '`"': return (str,Sym)[x[0]=='`']
  if x.replace('.','').replace('-','').isnumeric(): return float if '.' in x else int
  if x=='NIL': return type(None)
- if x in ASSIGN+VERB: return Builtin
+ if x[0] in ASSIGN+VERB: return Builtin
  return Name
 
 @dataclass
 class Val:
  v:Ast
  t:type
- def __repr__(s): return f'{s.v}:{repr(s.t)[8:-2]}'
+ def __repr__(s):
+  r = repr(s.t)
+  st = r[8:-2] if '<' in r else r
+  return f'{s.v}:{st}'
 
 def infer(a:Ast) -> Val:
  '''infer types from literal expressions'''
@@ -25,7 +28,7 @@ def infer(a:Ast) -> Val:
   case ('vec',b): return Val(a,ty(b[0].node))
   case ('{',p,b): return Ast(a.node,*map(infer,a.children))
   case ('[',()): return Val(a.node,'NIL')
-  case (node,()): return Val(node,ty(node))
+  case (node,()): return Val(node,ty(node[0]))
   case (node,children): return Ast(a.node,*map(infer,children))
   case _: raise SyntaxError(f'unmatched: {a}')
 
@@ -56,5 +59,5 @@ def formalize(a:Ast) -> Ast:
   return Ast(a.node, Ast('[',*(map(Ast,filter(str,xyz)))), *map(formalize,a.children))#insert (prg x y z)
  return Ast(a.node, *map(formalize,a.children))
 
-def analyze(a:Ast) -> Ast|Val:
+def Sema(a:Ast) -> Ast|Val:
  return infer(formalize(lam_from_prj(a)))

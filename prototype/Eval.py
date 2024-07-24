@@ -1,7 +1,7 @@
 '''Eval.py - interpret a parsed expression'''
-Expr = float|list|str
-class Sym(str):pass
-class Name(str):pass
+type Sym = str
+type Name = str
+type Expr = float|list|str|Sym|Name
 
 def ty1(x:str) -> type:
  if x[0] in '`"': return (str,Sym)[x[0]=='`']
