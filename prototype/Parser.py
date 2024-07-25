@@ -87,7 +87,7 @@ def _Parse(t:list,verbose:int)->Ast:
      while n in ADVERB: k,i,n = Ast(n,k),i+1,nn(i)
      if s:
       debug('adverb')
-      if str(s[-1].name)[0] in ASSIGN+VERB+OPAREN: s.append(Op(k,1))
+      if not noun(str(s[-1].name)): s.append(Op(k,1))
       else: d.append(Ast(s.pop().name)); s.append(Op(k,2))
      else: s.append(Op(k,1))
      if s[-1].arity==2: pad(n)

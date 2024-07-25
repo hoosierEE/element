@@ -1,4 +1,6 @@
 __pycache__/
+*.pyc
+
 *.i
 *.ii
 *.gpu
@@ -8,7 +10,6 @@ __pycache__/
 
 *.o
 
-tests/doctest.h
+# tests/doctest.h
 a.out
-
 .DS_Store
