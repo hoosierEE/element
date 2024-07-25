@@ -2,15 +2,17 @@ from .Ast import Ast
 from .Builtin import ASSIGN,VERB
 from dataclasses import dataclass
 
-type Sym = str
-type Name = str
 type Builtin = str
+type Name = str
+type Nil = None
+type Sym = str
 
 def ty(x:str) -> type:
+ '''infer types of literals'''
  if x[0] in '`"': return (str,Sym)[x[0]=='`']
  if x.replace('.','').replace('-','').isnumeric(): return float if '.' in x else int
- if x=='NIL': return type(None)
  if x[0] in ASSIGN+VERB: return Builtin
+ if x=='NIL': return Nil
  return Name
 
 @dataclass
@@ -22,17 +24,21 @@ class Val:
   st = r[8:-2] if '<' in r else r
   return f'{s.v}:{st}'
 
+def vectype(xs:list[Ast]) -> type:
+ types = {ty(x.node) for x in xs}
+ return float if int in types and float in types else types.pop()
+
 def infer(a:Ast) -> Val:
  '''infer types from literal expressions'''
  match (a.node,a.children):
-  case ('vec',b): return Val(a,ty(b[0].node))
+  case ('vec',b): return Val(a,vectype(b))
   case ('{',p,b): return Ast(a.node,*map(infer,a.children))
   case ('[',()): return Val(a.node,'NIL')
   case (node,()): return Val(node,ty(node[0]))
   case (node,children): return Ast(a.node,*map(infer,children))
   case _: raise SyntaxError(f'unmatched: {a}')
 
-def lam_from_prj(a:Ast) -> Ast:
+def lamp(a:Ast) -> Ast:
  '''convert projection to lambda'''
  ax,ay = Ast('x'),Ast('y')
  match a.node,len(a.children):
@@ -41,8 +47,42 @@ def lam_from_prj(a:Ast) -> Ast:
     return Ast('{',Ast('[',ax), Ast(v,ax))
    return Ast('{',Ast('[',ax,ay), Ast(v,ax,ay))
   case 'prj',2:
-   return Ast('{',Ast('[',ax), Ast(a.children[0].node,lam_from_prj(a.children[1]),ax))
- return Ast(a.node, *map(lam_from_prj,a.children))
+   return Ast('{',Ast('[',ax), Ast(a.children[0].node,lamp(a.children[1]),ax))
+ return Ast(a.node, *map(lamp,a.children))
+
+def lamc(a:Ast) -> Ast:
+ '''merge compositions into inner lambda'''
+ # print(a)
+ if a.node == 'cmp':
+  if a.children[1].node == '{' and a.children[0].node != '{':
+   x = Ast('{', a.children[1].children[0], Ast(a.children[0].node, a.children[1].children[1]))
+   print('first',x)
+   return x
+  elif a.children[1].node == 'cmp':
+   print('..',a.children[1])
+   x = lamc(Ast('cmp', a.children[0], lamc(a.children[1])))
+   print(x)
+   return x
+  else:
+   return 42
+   return Ast(a.node, *(lamc(x) for x in a.children))
+   # return a
+ else:
+  return 43
+  return Ast(a.node, *(lamc(x) for x in a.children))
+
+
+
+ # match a.node:
+ #  case 'cmp':
+ #   # print(a.children[0].node, a.children[1].node)
+ #   match (a.children[0].node, a.children[1].node):
+ #    # case ('{','{'): return Ast('app',*(lamc(x) for x in a.children))
+ #    case (b,'{'): print('leaf'); _,(c,d) = a.children[1]; return Ast('{',c,lamc(Ast(b,d)))
+ #    # case (b,'cmp'): print('recur'); return Ast(b, *a.children[1].children)
+ #    case _: return a
+ #    # case b,c: return Ast(a.node, *(lamc(x) for x in a.children[1].children))
+ #  case _: return Ast(a.node, *(lamc(x) for x in a.children))
 
 def get_params(a:Ast) -> str:
  '''get x y z arguments from lambdas'''
@@ -60,4 +100,5 @@ def formalize(a:Ast) -> Ast:
  return Ast(a.node, *map(formalize,a.children))
 
 def Sema(a:Ast) -> Ast|Val:
- return infer(formalize(lam_from_prj(a)))
+ '''semantic analysis wrapper'''
+ return infer(formalize(lamp(a)))
