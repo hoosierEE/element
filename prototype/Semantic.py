@@ -48,41 +48,25 @@ def lamp(a:Ast) -> Ast:
    return Ast('{',Ast('[',ax,ay), Ast(v,ax,ay))
   case 'prj',2:
    return Ast('{',Ast('[',ax), Ast(a.children[0].node,lamp(a.children[1]),ax))
- return Ast(a.node, *map(lamp,a.children))
+  case _:
+   return Ast(a.node, *map(lamp,a.children))
 
 def lamc(a:Ast) -> Ast:
  '''merge compositions into inner lambda'''
- # print(a)
- if a.node == 'cmp':
-  if a.children[1].node == '{' and a.children[0].node != '{':
-   x = Ast('{', a.children[1].children[0], Ast(a.children[0].node, a.children[1].children[1]))
-   print('first',x)
-   return x
-  elif a.children[1].node == 'cmp':
-   print('..',a.children[1])
-   x = lamc(Ast('cmp', a.children[0], lamc(a.children[1])))
-   print(x)
-   return x
-  else:
-   return 42
-   return Ast(a.node, *(lamc(x) for x in a.children))
-   # return a
- else:
-  return 43
-  return Ast(a.node, *(lamc(x) for x in a.children))
-
-
-
- # match a.node:
- #  case 'cmp':
- #   # print(a.children[0].node, a.children[1].node)
- #   match (a.children[0].node, a.children[1].node):
- #    # case ('{','{'): return Ast('app',*(lamc(x) for x in a.children))
- #    case (b,'{'): print('leaf'); _,(c,d) = a.children[1]; return Ast('{',c,lamc(Ast(b,d)))
- #    # case (b,'cmp'): print('recur'); return Ast(b, *a.children[1].children)
- #    case _: return a
- #    # case b,c: return Ast(a.node, *(lamc(x) for x in a.children[1].children))
- #  case _: return Ast(a.node, *(lamc(x) for x in a.children))
+ match a.node:
+  case 'cmp': # 2 children
+   match a.children[0].node, a.children[1].node:
+    case '{','{':
+     b1 = a.children[0].children[1]
+     args,b2 = a.children[1].children
+     return Ast('{',args,Ast(b1.node,b1.children[0],b2))
+    case b,'{':
+     args,b2 = a.children[1].children
+     return Ast('{',args,Ast(a.children[0].node,b2))
+    case '{',b: return lamc(Ast('cmp',a.children[0],(lamc(a.children[1]))))
+    case b,c: return lamc(Ast('cmp',lamc(a.children[0]),lamc(a.children[1])))
+  case _:
+   return Ast(a.node, *map(lamc,a.children))
 
 def get_params(a:Ast) -> str:
  '''get x y z arguments from lambdas'''
@@ -101,4 +85,4 @@ def formalize(a:Ast) -> Ast:
 
 def Sema(a:Ast) -> Ast|Val:
  '''semantic analysis wrapper'''
- return infer(formalize(lamp(a)))
+ return infer(formalize(lamc(lamp(a))))
