@@ -26,15 +26,15 @@ class Val:
 
 def vectype(xs:list[Ast]) -> type:
  types = {ty(x.node) for x in xs}
- return float if int in types and float in types else types.pop()
+ return float if (int in types and float in types) else types.pop()
 
 def infer(a:Ast) -> Val:
  '''infer types from literal expressions'''
  match (a.node,a.children):
   case ('vec',b): return Val(a,vectype(b))
-  case ('{',p,b): return Ast(a.node,*map(infer,a.children))
-  case ('[',()): return Val(a.node,'NIL')
-  case (node,()): return Val(node,ty(node[0]))
+  case ('{',_): return Ast(a.node,*map(infer,a.children))
+  case ('[',()): return Val(a.node,Nil)
+  case (node,()): return Val(node,ty(node))
   case (node,children): return Ast(a.node,*map(infer,children))
   case _: raise SyntaxError(f'unmatched: {a}')
 
@@ -46,15 +46,13 @@ def lamp(a:Ast) -> Ast:
    if (v:=a.children[0].node)[0] in VERB and v.endswith(':'):
     return Ast('{',Ast('[',ax), Ast(v,ax))
    return Ast('{',Ast('[',ax,ay), Ast(v,ax,ay))
-  case 'prj',2:
-   return Ast('{',Ast('[',ax), Ast(a.children[0].node,lamp(a.children[1]),ax))
-  case _:
-   return Ast(a.node, *map(lamp,a.children))
+  case 'prj',2: return Ast('{',Ast('[',ax), Ast(a.children[0].node,lamp(a.children[1]),ax))
+  case _: return Ast(a.node, *map(lamp,a.children))
 
 def lamc(a:Ast) -> Ast:
  '''merge compositions into inner lambda'''
  match a.node:
-  case 'cmp': # 2 children
+  case 'cmp': # exactly 2 children
    match a.children[0].node, a.children[1].node:
     case '{','{':
      b1 = a.children[0].children[1]
@@ -64,9 +62,8 @@ def lamc(a:Ast) -> Ast:
      args,b2 = a.children[1].children
      return Ast('{',args,Ast(a.children[0].node,b2))
     case '{',b: return lamc(Ast('cmp',a.children[0],(lamc(a.children[1]))))
-    case b,c: return lamc(Ast('cmp',lamc(a.children[0]),lamc(a.children[1])))
-  case _:
-   return Ast(a.node, *map(lamc,a.children))
+    case b,c: return lamc(Ast('cmp',*map(lamc,a.children))) #lamc(a.children[0]),lamc(a.children[1])))
+  case _: return Ast(a.node,*map(lamc,a.children))
 
 def get_params(a:Ast) -> str:
  '''get x y z arguments from lambdas'''
@@ -85,4 +82,4 @@ def formalize(a:Ast) -> Ast:
 
 def Sema(a:Ast) -> Ast|Val:
  '''semantic analysis wrapper'''
- return infer(formalize(lamc(lamp(a))))
+ return (formalize(lamc(lamp(a))))

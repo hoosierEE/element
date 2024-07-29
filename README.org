@@ -6,18 +6,16 @@
 - how: first build a Python prototype, then implement in CUDA/C++ (or perhaps [[https://ziglang.org/download/0.11.0/release-notes.html#GPGPU][Zig]] or [[https://pkg.odin-lang.org/vendor/OpenGL/][Odin]]?)
 - maybe one day: a fast DSL for data-intensive kernels embedded in a distributed system environment like [[https://gleam.run/][Gleam]]
 
-keywords: "array-oriented" "interpreted" "functional" "automatic memory management"
+PL jargon: =array-oriented= =interpreted= =functional= =automatic memory management= =eager=
 
 ** types
-- builtin types - int, float, string, symbol
+- built-in types - float, integer, string, symbol
+- special values - =0w= (infinity), =0n= (null float), =0N= (null integer)
 - compound types
- - list-like
-   - tensor - same type, N dimensional
-   - vector - same type, 1 dimensional (simplest tensor)
-   - list - any types, any shape
- - dict-like
-   - table - keys (column names) are symbols, values are same-shape vectors
-   - dict - keys are any fundamental type, values are arbitrary
+  - dict - list of key-value pairs; keys must be symbols, values can be any type
+  - list-like
+    - vector - 1-dimensional contiguous storage for values of one type e.g: "vector of integers"
+    - list - 1-dimensional storage for any types
 
 ** k crash course
 K is a vector language descended from APL, with hints of lisp.
@@ -119,44 +117,45 @@ CPU=1 cd element && make
 
 * Development Roadmap
 This project is in the *experimental*, pre-alpha stage.
-Some [[https://github.com/doctest/doctest/tree/master/doc/markdown#reference][doctest]] tests exist, but no coverage goals yet.
+Some [[https://github.com/doctest/doctest/tree/master/doc/markdown#reference][doctest]] tests [[https://github.com/hoosierEE/element/blob/main/src/main.cc#L119][exist]], but no coverage goals yet.
+Some [[https://github.com/hoosierEE/element/blob/main/prototype/Test.py][unit tests]] exist in the prototype folder.
 
-[0/3]
-- [-] prototype implementation
-  - [X] lex/scan/tokenize
-  - [X] parse
-  - [-] semantic analysis
-    - [ ] rank polymorphic verbs
-    - [ ] iterators
-    - [ ] type checking
-    - [-] type inference
-      - [X] primitive types (int|float|string|symbol)
-      - [X] vec
-      - [X] list
-      - [ ] expression
-      - [ ] lambda
-      - [ ] tensor
-      - [ ] dict
-      - [ ] table
-    - [X] name binding
-    - [X] function application
-    - [X] variable names and lexical scope
-    - [X] composition/projection =(2+)1=
-    - [X] projection ⇒ lambda
-    - [ ] composition ⇒ lambda
-    - [ ] errors (mutable, rank, unused, ...)
-  - [-] code generation
-    - [ ] tree-walk interpreter
-    - [X] simple arithmetic =1+2=
-    - [X] array arithmetic =1 2+3 4=
-    - [ ] iterators =+/1 2 3=
-    - [ ] structural functions =4 3#!5=
-- [ ] hardware accelerated implementation
-  - [ ] full test suite compatibility with prototype
-  - [ ] benchmarks showing it is faster
-- [ ] stable release(s)
-  - [ ] pick a version numbering system (and stick to it)
-  - [ ] formal grammar
-  - [ ] standard library
-  - [ ] package management
-  - [ ] documentation, playground, tutorials
+** prototype implementation [2/4]
+- [X] lex/scan/tokenize
+- [X] parse
+- [-] semantic analysis [3/12]
+  - [ ] rank polymorphic verbs
+  - [ ] iterators
+  - [ ] type checking
+  - [-] type inference
+    - [X] primitive types (int|float|string|symbol)
+    - [X] vec
+    - [ ] list
+    - [ ] expression
+    - [ ] lambda
+    - [ ] dict
+  - [ ] name binding
+  - [ ] function application
+  - [ ] variable names and lexical scope
+  - [X] composition/projection =(2+)1=
+  - [X] projection ⇒ lambda
+  - [X] composition ⇒ lambda
+  - [ ] partial application reduction ={x+y}[0;]= ⇒ ={0+x}=
+  - [ ] errors (mutable, rank, unused, ...)
+- [ ] code generation [0/5]
+  - [ ] tree-walk interpreter
+  - [ ] simple arithmetic =1+2=
+  - [ ] array arithmetic =1 2+3 4=
+  - [ ] iterators =+/1 2 3=
+  - [ ] structural functions =4 3#!5=
+
+** hardware accelerated implementation [0/2]
+- [ ] full test suite compatibility with prototype
+- [ ] benchmarks showing it is faster
+
+** stable release(s) [0/5]
+- [ ] pick a version numbering system (and stick to it)
+- [ ] formal grammar
+- [ ] standard library
+- [ ] package management
+- [ ] documentation, playground, tutorials
