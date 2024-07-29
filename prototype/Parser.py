@@ -64,7 +64,7 @@ def _Parse(t:list,verbose:int)->Ast:
      else: break
     elif c in ADVERB: x = s.pop(); s.append(Op(Ast(c,Ast(x.name)),x.arity)); x.arity==2 and pad(n)
     elif noun(c) or c[0] in '`"': d.append(Ast(c)); break
-    elif c in VERB+VERBM and n in CPAREN+ENDEXP:
+    elif c in ASSIGN+VERB+VERBM and n in CPAREN+ENDEXP:
      d.append(Ast(c)) if s and s[-1].name in OPAREN else rq(Ast('prj',Ast(c))); break
     elif c in VERB+VERBM and n in ADVERB: d.append(Ast(c)); break
     else: s.append(Op(c,1))
