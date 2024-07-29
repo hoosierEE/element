@@ -2,6 +2,8 @@
 This folder contains experiments used to guide Element development.
 Currently the focus is on an Element interpreter, written in Python to prioritize quick iteration over run-time performance.
 
+** Builtin.py
+This file defines the language's keywords, punctuation, and built-in syntax.
 ** Ast.py
 The =Ast= class defines an abstract syntax tree (AST) node and its pretty-printer.
 An Ast node is a (required) name and (optional) children.
@@ -50,12 +52,18 @@ These two projections form a composition, and finally the leading =+= must be a 
 Again we preserve the partial application information by making the root node a =cmp=.
 
 One thing the parser does not do is validate the shape or type of arguments to operands.
-For example ="ab"/3= is an invalid expression in the language but parses as =((fld "ab") 3)=.
+For example ="ab"/3= is not defined by the language but still parses as =((fld "ab") 3)=.
 The evaluator will handle this task.
+
+** Semantic.py
+Semantic analysis passes are in this file.
+Type inference occurs here, as do a few assorted odds and ends like converting projections into lambdas to make the internal representation more uniform.
+For now, these passes are implemented in the traditional recursive style.
+One day I would like to try a more data-oriented approach (e.g. using Apter trees), but as I'm more familiar with the recursive formulation it's going to be my first attempt.
+Walk before you run, right?
 
 ** Eval.py
 This section is TBD.
-
 - Interesting paper: https://arxiv.org/pdf/1109.0781
 - Interesting statically typed compiled language: https://aardappel.github.io/lobster/README_FIRST.html
 

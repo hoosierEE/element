@@ -1,7 +1,6 @@
-from .Eval import *
-from .Parser import *
-from .Scanner import *
-from .Semantic import *
+from .Parser import Parse
+from .Scanner import Scan
+
 def test_expr(scan,parse):
  x = """
  input      ⇒ expected output (in s-expr form)
@@ -200,7 +199,7 @@ def test_eval(scan,parse,evil):
   print(f'{"expected:":>{len(i)}}   {o}')
 
 
-# def test(scan,parse,evil):
+# def test_all(scan,parse,evil):
 #  print("test_expr:")
 #  test_expr(scan,parse)
 #  print("test_exception:")

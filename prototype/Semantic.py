@@ -81,5 +81,6 @@ def formalize(a:Ast) -> Ast:
  return Ast(a.node, *map(formalize,a.children))
 
 def Sema(a:Ast) -> Ast|Val:
- '''semantic analysis wrapper'''
+ '''wrapper function for all the semantic analysis passes, in the right order'''
+ # return infer(formalize(lamc(lamp(a))))
  return (formalize(lamc(lamp(a))))

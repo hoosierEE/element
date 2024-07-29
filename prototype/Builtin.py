@@ -1,9 +1,11 @@
+# tuple[str]
+# except BS (str) and LF (str)
 ADVERB = "'","/","\\"
-ANDOR = "and","or"
 ASSIGN = ":","::"
 BS = "\\"
 CPAREN = ')','}',']'
 ENDEXP = '',';','\n'
+KEYWORD = "and","or","in","export","import"
 LF = "\n"
 OPAREN = '(','{','['
 VERB = tuple("~!@#$%^&*-_=+|,.<>?")

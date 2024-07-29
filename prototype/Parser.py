@@ -1,5 +1,5 @@
 from .Ast import Ast
-from .Builtin import ADVERB,ASSIGN,CPAREN,ENDEXP,LF,OPAREN,VERB,VERBM,WHITESPACE
+from .Builtin import *
 import collections as C
 NIL = Ast('NIL')
 Op = C.namedtuple('Op','name arity')
@@ -20,6 +20,7 @@ def _Parse(t:list,verbose:int)->Ast:
   if op in OPAREN: b.append(CPAREN[OPAREN.index(op)]); return 0
   if op in CPAREN and (not b or op!=b.pop()): return 1
  def err(i,m=''): return f'Parse: {m}{LF}{"".join(t[:i]).strip()}'
+
  def reduce(until:str):#reduce until (until) matches
   while s and str(s[-1].name) not in until: rt(*s.pop())
 
@@ -28,8 +29,8 @@ def _Parse(t:list,verbose:int)->Ast:
   if x in ENDEXP:
    if   len(k)>1 and k[1][0]==x: k = [k[0],*k[1][1]]
    elif len(k)>0 and k[0][0]==x: k = [*k[0][1],*k[1:]]
-  # if x in ANDOR:           d.append(Ast(x,*k)) #TODO: (and;or) short-circuiting operators
-  if noun(x):              d.append(Ast('app',Ast(x),*k))
+  if x in KEYWORD:         d.append(Ast(x,*k)) #TODO: (and;or) short-circuiting operators
+  elif noun(x):            d.append(Ast('app',Ast(x),*k))
   elif type(x)==Ast and k: d.append(Ast('app',x,*k))
   else:                    d.append(Ast(x,*k))
   debug('rt',x,k)
@@ -63,6 +64,7 @@ def _Parse(t:list,verbose:int)->Ast:
      if s and s[-1].name=='{' and x.name=='[' and n!='}': s.append(Op(';',2))
      else: break
     elif c in ADVERB: x = s.pop(); s.append(Op(Ast(c,Ast(x.name)),x.arity)); x.arity==2 and pad(n)
+    elif c in KEYWORD: s.append(Op(c,1))
     elif noun(c) or c[0] in '`"': d.append(Ast(c)); break
     elif c in ASSIGN+VERB+VERBM and n in CPAREN+ENDEXP:
      d.append(Ast(c)) if s and s[-1].name in OPAREN else rq(Ast('prj',Ast(c))); break
@@ -97,8 +99,8 @@ def _Parse(t:list,verbose:int)->Ast:
     elif c in VERBM:
      if n in CPAREN+ENDEXP: raise SyntaxError(err(i,"can't project a prefix op"))
      else: s.append(Op(c,1))
-    elif c in VERB:
-     if c!='.' and s and s[-1]==Op('.',2): reduce('')#precedence: a.b+1 == (a.b)+1
+    elif c in KEYWORD+VERB:
+     if c!='.' and s and s[-1]==Op('.',2): reduce('') #precedence: a.b+1 == (a.b)+1
      if n in CPAREN+ENDEXP: rq(Ast('prj',Ast(c),d.pop())); continue
      else: s.append(Op(c,2))
     else:
