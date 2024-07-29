@@ -2,10 +2,15 @@ from .Ast import Ast
 from .Builtin import ASSIGN,VERB
 from dataclasses import dataclass
 
-type Builtin = str
-type Name = str
-type Nil = None
-type Sym = str
+class Name(str): pass
+class Builtin(str): pass
+class Nil(object): pass
+class Sym(str): pass
+
+# type Builtin = str
+# type Name = str
+# type Nil = None
+# type Sym = str
 
 def ty(x:str) -> type:
  '''infer types of literals'''
@@ -82,5 +87,5 @@ def formalize(a:Ast) -> Ast:
 
 def Sema(a:Ast) -> Ast|Val:
  '''wrapper function for all the semantic analysis passes, in the right order'''
- # return infer(formalize(lamc(lamp(a))))
- return (formalize(lamc(lamp(a))))
+ return infer(formalize(lamc(lamp(a))))
+ # return (formalize(lamc(lamp(a))))

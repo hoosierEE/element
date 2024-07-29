@@ -1,14 +1,30 @@
+from .Ast import Ast
+from .Semantic import Val,Name
+import operator as op
+
 type Expr = float|int|list|str
 
-def ev(x:Expr)->Expr:
- return Eval({},x)
+def Env() -> dict:
+ return {
+  '-': op.sub,
+  '+': op.add,
+ }
 
-def Eval(e:dict,x:Expr)->Expr:
+def Eval(x:Expr,e:dict) -> Expr:
+ # print(dict(set(e.items()-set(Env().items()))),x)
  match x:
-  case float()|int()|('lam',_,_): return x
-  case str():                     return e[x]
-  case ('-',a,b):                 return Eval(e,a)-Eval(e,b) # TODO: all the other operators
-  case ('let',a,b,c):             return Eval({**e,a:Eval(e,b)},c)
-  case ('if',a,b,c):              return Eval(e,b) if Eval(e,a) else Eval(e,c)
-  case (('lam',a,b),*c):          return Eval({**e,**dict(zip(a,(Eval(e,i) for i in c)))},b)
-  case list():                    return Eval(e,[Eval(e,i) for i in x])
+  case Name()|str(): return e[x]
+  case Val(): return Eval(x.t(x.v),e)
+  case float()|int()|('{',_,_): return x
+  case Ast(): return Eval([x.node,*x.children],e)
+  case (':',a,b):
+   k = Eval(a,e) if a.v in e else a.v
+   e[k] = Eval(b,e)
+   return e[k]
+  case ('(',*xs): return [Eval(x,e) for x in xs]
+  case (';',*xs): return Eval([Eval(x,e) for x in xs][-1],e)
+  case (op,*xs) if op in e:
+   proc = e[op]
+   args = [Eval(a,e) for a in xs]
+   return proc(*args)
+  case list(): return Eval([Eval(i,e) for i in x],e)
