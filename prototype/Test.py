@@ -19,6 +19,8 @@ def test_expr(scan,parse):
  1 2+       ⇒ (prj + (vec 1 2))
  1 2+3 4    ⇒ (+ (vec 1 2) (vec 3 4))
  1 2+``a    ⇒ (+ (vec 1 2) (vec ` `a))
+ a b 1 2    ⇒ (app a (app b (vec 1 2)))
+ 1 2 a 3 4  ⇒ (app (vec 1 2) (app a (vec 3 4)))
  a+-        ⇒ (cmp (prj + a) (prj -))
  *a+-       ⇒ (cmp * (cmp (prj + a) (prj -)))
  +-*        ⇒ (cmp + (cmp - (prj *)))
