@@ -1,7 +1,8 @@
 from .Ast import Ast
+from .Parser import NIL
 from .Builtin import ASSIGN,VERB
 from dataclasses import dataclass
-
+class LengthError(Exception): pass
 class Builtin(str): pass
 class Name(str): pass
 class Nil(object): pass
@@ -80,24 +81,7 @@ def formalize(a:Ast) -> Ast:
   return Ast(a.node, Ast('[',*(map(Ast,filter(str,xyz)))), *map(formalize,a.children))#insert (prg x y z)
  return Ast(a.node, *map(formalize,a.children))
 
-def par(a:Ast) -> Ast:
- '''
- convert partial applications to new lambdas with fewer args
- (after formalize)
- {x,y}[;2] ⇒ {x,2}
- {x,y,z}[;2] ⇒ {x,2,y}
- {x,y,z}[;;3] ⇒ {x,y,3}
- {z}[3] ⇒ {y}
- {y}[2] ⇒ {x}
- {z}[;4] ⇒ {x}
- {z}[;;2] ⇒ 2
- '''
- match a.node:
-  case 'app' if a.children[0].node=='{':
-   return ... #TODO
- return Ast(a.node, *map(par,a.children))
-
 def Sema(a:Ast) -> Ast|Val:
  '''wrapper function for all the semantic analysis passes, in the right order'''
- # return infer(formalize(lamc(lamp(a))))
- return (formalize(lamc(lamp(a))))
+ return infer(formalize(lamc(lamp(a))))
+ # return formalize(lamc(lamp(a)))
