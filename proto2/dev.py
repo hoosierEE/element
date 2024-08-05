@@ -9,5 +9,5 @@ from .Builtin import *
 from .Scanner import Scan
 from .Parser import Ast,Parse
 from .Test import *
-# from .Semantic import *
-# from .Eval import Eval,Env
+from .Semantic import *
+from .Eval import Eval,Env

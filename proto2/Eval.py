@@ -1,4 +1,4 @@
-from .Ast import Ast
+from .Parser import Ast
 from .Semantic import Val,Name
 import operator as op
 type Expr = float|int|list|Name|Nil

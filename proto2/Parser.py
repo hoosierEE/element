@@ -7,6 +7,8 @@ def repr_ast(s):
   case str(): return s
   case a,None: return repr_ast(a)
   case a,(): return repr_ast(a)
+  case '(',a: return f'(⋯ {repr_ast(a)})'
+  case '{',a: return f'(λ {repr_ast(a)})'
   case 'vec',a: return f'(vec {" ".join(repr_ast(x) for x in a)})'
   case str() as a,b: return f'({a} {repr_ast(b)})' if b else a
   case tuple()|list(): return " ".join(map(repr_ast,s))
@@ -15,7 +17,7 @@ def repr_ast(s):
 class Ast(namedtuple('Ast','n c',defaults=(None,))):
  def __repr__(s): return repr_ast(s)
 
-NIL = Ast('NIL')
+NIL = Ast('∅')
 
 def _Parse(t:list,verbose:int)->Ast:
  '''Parse(Scan(str)) ⇒ AST'''
@@ -123,7 +125,6 @@ def _Parse(t:list,verbose:int)->Ast:
      else: s.append(Op(c,2))
     else:
      s.append(Op(d.pop(),1))#top of d wasn't a noun after all
-     # if type(c)==tuple: d.append(Ast('vec',c)); continue
      if noun(c) or c[0] in '`"': d.append(Ast('vec',c) if type(c)==tuple else Ast(c)); continue
      pad(n); s.append(Op(c,1))
     break
