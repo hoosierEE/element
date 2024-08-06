@@ -22,6 +22,7 @@ class Val:
  def __repr__(s):
   r = repr(s.t)
   st = r[8:-2] if '<' in r else r
+  st = st.split('.')[-1] # discard "package.module." prefix
   return f'{s.v}:{st}'
 
 def vectype(xs:list[Ast]) -> type:
@@ -30,9 +31,10 @@ def vectype(xs:list[Ast]) -> type:
 
 def infer(a:Ast) -> Val:
  '''infer types from literal expressions'''
- match (a.n,a.c):
+ match a:
+  case str()|None: return a
   case ('vec',b): return Val(a,vectype(b))
-  case ('{',_): return Ast(a.n,*map(infer,a.c))
+  case ('{',b,c): return Ast(a.n,tuple(map(infer,a.c)))
   case ('[',()): return Val(a.n,Nil)
   case (node,()): return Val(node,ty(node))
   case (node,None): return Val(node,ty(node))
@@ -41,16 +43,12 @@ def infer(a:Ast) -> Val:
 
 def lamp(a:Ast) -> Ast:
  '''convert projection to lambda'''
- ax,ay = Ast('x'),Ast('y')
+ px,py = Ast('x'),Ast('y')
  match a:
-  case 'prj',b if b and len(b)==1:
-   if (v:=a.c[0].n)[0] in VERB and v.endswith(':'):
-    return Ast('{',(Ast('[',ax),    Ast(v,ax)))
-   return  Ast('{',(Ast('[',ax,ay), Ast(v,ax,ay)))
-  case 'prj',b if b and len(b)==2:
-   print(a)
-   return Ast('{', (Ast('[',ax), Ast(a.c[0].n,(lamp(a.c[1]),ax))))
-  case _: return Ast(a.n,tuple(map(lamp,a.c))) if a.c else Ast(a.n)
+  case str()|None: return a
+  case 'prj',(x,None): return Ast('{',(Ast('[',(px,py)),Ast(x,(px,py))))
+  case 'prj',(x,y): return Ast('{',(Ast('[',px),Ast(x.n,(y,px))))
+  case _: return Ast(lamp(a.n),tuple(map(lamp,a.c))) if a.c else Ast(a.n)
 
 def lamc(a:Ast) -> Ast:
  '''merge compositions into inner lambda'''
@@ -70,18 +68,20 @@ def lamc(a:Ast) -> Ast:
 
 def get_params(a:Ast) -> str:
  '''get x y z arguments from lambdas'''
- if a.n=='{': return ''
- if a.n in ASSIGN and a.c[0].n in 'xyz': return ''
- if a.n in [*'xyz']: return a.n
- return ''.join(sorted(get_params(x) for x in a.c))
+ match a:
+  case ('x'|'y'|'z',None): return a.n
+  case (':'|'::',(b,c)) if b.n in ('x','y','z'): return get_params(c)
+  case (_,b): return ''.join(map(get_params,b)) if b else ''
 
 def formalize(a:Ast) -> Ast:
  '''add formal arguments to lambdas'''
- if a.n=='{' and a.c:#lambda without arg list
-  if xyz := get_params(a.c[0]):#insert placeholders: xz ⇒ x_z
-   xyz = ''.join(x if x in xyz else '_' for x,_ in zip('xyz',range(ord(max(xyz))-ord('w'))))
-  return Ast(a.n, Ast('[',*(map(Ast,filter(str,xyz)))), *map(formalize,a.c))#insert (prg x y z)
- return Ast(a.n,tuple(map(formalize,a.c))) if a.c else Ast(a.n)
+ # (λ body) ⇒ args = get_params(body); return (λ (args) formalize(body))
+ # (λ ([ args...) body) ⇒ recurse on body
+ match a:
+  case ('{',(body,)): return Ast('{',(Ast('[',get_params(body)), formalize(body)))
+  case ('{',(('[',args),body)): return Ast('{',(Ast('[',args), formalize(body)))
+  case b,c: return Ast(formalize(b),formalize(c))
+  case _: return a
 
 def Sema(a:Ast) -> Ast|Val:
  '''wrapper function for all the semantic analysis passes, in the right order'''
