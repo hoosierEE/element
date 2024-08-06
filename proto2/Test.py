@@ -5,7 +5,9 @@ def test_expr(scan,parse):
  x = """
  input      ⇒ expected output (in s-expr form)
             ⇒ None
+ #
  # projection/composition/application
+ #
  a+         ⇒ (prj + a)
  +-         ⇒ (cmp + (prj -))
  (+)-       ⇒ (prj - +)
@@ -41,7 +43,14 @@ def test_expr(scan,parse):
  (+/)/y     ⇒ (app (/ (/ +)) y)
  x(+/)y     ⇒ (app x (app (/ +) y))
  (-a)*b     ⇒ (* (- a) b)
+ #
+ # dicts
+ #
+ [a:1; b:2] ⇒ ([ (: a 1) (: b 2))
+ `a`b!1 2   ⇒ (! (vec `a `b) (vec 1 2))
+ #
  # lists
+ #
  (;)        ⇒ (⋯ ∅ ∅)
  (;b)       ⇒ (⋯ ∅ b)
  (a)        ⇒ a
@@ -116,6 +125,9 @@ def test_expr(scan,parse):
  x f//y     ⇒ (app (/ (/ f)) x y)
  x f/y      ⇒ (app (/ f) x y)
  x{f}/y     ⇒ (app (/ (λ f)) x y)
+ #
+ # lambdas
+ #
  {()()}     ⇒ (λ (app (⋯ ∅) (⋯ ∅)))
  {()}       ⇒ (λ (⋯ ∅))
  {(x)y}     ⇒ (λ (app x y))
