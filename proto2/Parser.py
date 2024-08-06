@@ -12,7 +12,7 @@ def repr_ast(s):
   case 'vec',a: return f'(vec {" ".join(repr_ast(x) for x in a)})'
   case str() as a,b: return f'({a} {repr_ast(b)})' if b else a
   case tuple()|list(): return " ".join(map(repr_ast,s))
- return 'huh?' + str(type(s))
+ return repr(s)
 
 class Ast(namedtuple('Ast','n c',defaults=(None,))):
  def __repr__(s): return repr_ast(s)
