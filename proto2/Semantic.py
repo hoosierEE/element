@@ -68,9 +68,12 @@ def lamc(a:Ast) -> Ast:
 
 def get_params(a:Ast) -> str:
  '''get x y z arguments from lambdas'''
+ print(a)
  match a:
+  case None: return ''
   case ('x'|'y'|'z',None): return a.n
   case (':'|'::',(b,c)) if b.n in ('x','y','z'): return get_params(c)
+  case tuple(): print(type(a)); return ''.join(map(get_params,a))
   case (_,b): return ''.join(map(get_params,b)) if b else ''
 
 def formalize(a:Ast) -> Ast:
@@ -80,6 +83,11 @@ def formalize(a:Ast) -> Ast:
  match a:
   case ('{',(body,)): return Ast('{',(Ast('[',get_params(body)), formalize(body)))
   case ('{',(('[',args),body)): return Ast('{',(Ast('[',args), formalize(body)))
+  case ('{',seq):
+   print('seq',seq)
+   # return Ast('{',(Ast('[',''.join(map(get_params,seq))), formalize(seq)))
+   return Ast('{',(Ast('[',get_params(seq)), formalize(seq)))
+  case b,tuple() as c:return Ast(formalize(b),tuple(map(formalize,c)))
   case b,c: return Ast(formalize(b),formalize(c))
   case _: return a
 

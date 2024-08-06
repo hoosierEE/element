@@ -45,7 +45,6 @@ def _Parse(t:list,verbose:int)->Ast:
 
  def rt(x,arity):#(r)educe (t)op of stack based on x's arity (and precedence)
   k = [d.pop() for _ in range(min(len(d),arity))][::-1]
-  # print(x,k)
   if x in ENDEXP:
    if   len(k)>1 and k[1][0]==x: k = [k[0],*k[1][1]]
    elif len(k)>0 and k[0][0]==x: k = [*k[0][1],*k[1:]]
@@ -57,8 +56,10 @@ def _Parse(t:list,verbose:int)->Ast:
 
  def rp(x:Op):#(r)educe (p)aren, e.g: reduce(OPAREN); rp(s.pop())
   k = Ast(x.name,(y[1] if (y:=d.pop())[0]==';' else (y,)))
-  if x.name=='(' and len(k[1])==1 and k[1][0]!=NIL: k = k[1][0]
-  if x.name=='[' and x.arity==2: k = Ast('app',(d.pop(),k))
+  if x.name=='(' and len(k[1])==1 and k[1][0]!=NIL:
+   k = k[1][0]
+  if x.name=='[' and x.arity==2:
+   k = Ast('app',(d.pop(),k))
   d.append(k); debug('rp',x,k)
 
  def rq(k:Ast):#juxtaposition-based syntax: projection and composition
@@ -102,7 +103,9 @@ def _Parse(t:list,verbose:int)->Ast:
     elif c in OPAREN: c in "({" and s.append(Op(d.pop(),1)); pad(n); s.append(Op(c,2))
     elif c in CPAREN:
      reduce(OPAREN); rp(x:=s.pop())
-     if s and s[-1].name=='{' and x.name=='[' and n!='}': s.append(Op(';',2))
+     if s and s[-1].name=='{' and x.name=='[' and n!='}':
+      print('rp binary',s,d)
+      s.append(Op(';',2))
      else: continue
     elif c in ADVERB:
      k = Ast(c,d.pop())#bind adverb to whatever
