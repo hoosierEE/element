@@ -50,45 +50,23 @@ def lamp(a:Ast) -> Ast:
   case 'prj',(x,y): return Ast('{',(Ast('[',px),Ast(x.n,(y,px))))
   case _: return Ast(lamp(a.n),tuple(map(lamp,a.c))) if a.c else Ast(a.n)
 
-def lamc(a:Ast) -> Ast:
- '''merge compositions into inner lambda'''
- match a.n:
-  case 'cmp': # exactly 2 children
-   match a.c[0].n, a.c[1].n:
-    case '{','{':
-     b1 = a.c[0].c[1]
-     args,b2 = a.c[1].c
-     return Ast('{',args,Ast(b1.n,b1.c[0],b2))
-    case b,'{':
-     args,b2 = a.c[1].c
-     return Ast('{',args,Ast(a.c[0].n,b2))
-    case '{',b: return lamc(Ast('cmp',a.c[0],(lamc(a.c[1]))))
-    case b,c: return lamc(Ast('cmp',*map(lamc,a.c))) #lamc(a.c[0]),lamc(a.c[1])))
-  case _: return Ast(a.n,tuple(map(lamc,a.c))) if a.c else Ast(a.n)
-
 def get_params(a:Ast) -> str:
  '''get x y z arguments from lambdas'''
- print(a)
  match a:
-  case None: return ''
   case ('x'|'y'|'z',None): return a.n
   case (':'|'::',(b,c)) if b.n in ('x','y','z'): return get_params(c)
-  case tuple(): print(type(a)); return ''.join(map(get_params,a))
-  case (_,b): return ''.join(map(get_params,b)) if b else ''
+  case str()|None: return ''
+  case tuple(): return ''.join(map(get_params,a))
+  case _: return get_params(a.n)+get_params(a.c)
 
 def formalize(a:Ast) -> Ast:
  '''add formal arguments to lambdas'''
- # (λ body) ⇒ args = get_params(body); return (λ (args) formalize(body))
- # (λ ([ args...) body) ⇒ recurse on body
  match a:
   case ('{',(body,)): return Ast('{',(Ast('[',get_params(body)), formalize(body)))
   case ('{',(('[',args),body)): return Ast('{',(Ast('[',args), formalize(body)))
-  case ('{',seq):
-   print('seq',seq)
-   # return Ast('{',(Ast('[',''.join(map(get_params,seq))), formalize(seq)))
-   return Ast('{',(Ast('[',get_params(seq)), formalize(seq)))
-  case b,tuple() as c:return Ast(formalize(b),tuple(map(formalize,c)))
-  case b,c: return Ast(formalize(b),formalize(c))
+  case ('{',tuple() as c): return Ast('{',(Ast('[',tuple(map(Ast,get_params(c)))), formalize(c)))
+  case (b,tuple() as c):return Ast(formalize(b),tuple(map(formalize,c)))
+  case (b,c): return Ast(formalize(b),formalize(c))
   case _: return a
 
 def Sema(a:Ast) -> Ast|Val:

@@ -2,17 +2,16 @@ from .Builtin import *
 from collections import namedtuple
 Op = namedtuple('Op','name arity')
 
-def repr_ast(s):
+def repr_ast(s) -> str:
  match s:
+  case '{': return 'λ'
+  case '(': return '⋯'
+  # case ('{',(('[',a),b)): return f'(λ ({repr_ast(a)}) {repr_ast(b)})'
   case str(): return s
-  case a,None: return repr_ast(a)
-  case a,(): return repr_ast(a)
-  case '(',a: return f'(⋯ {repr_ast(a)})'
-  case '{',a: return f'(λ {repr_ast(a)})'
-  case 'vec',a: return f'(vec {" ".join(repr_ast(x) for x in a)})'
-  case str() as a,b: return f'({a} {repr_ast(b)})' if b else a
-  case tuple()|list(): return " ".join(map(repr_ast,s))
- return repr(s)
+  case (a,None|()): return repr_ast(a)
+  case Ast(): return f'({repr_ast(s.n)} {repr_ast(s.c)})' # if s.c else repr_ast(s.n)
+  case tuple(): return " ".join(map(repr_ast,s))
+ return 42
 
 class Ast(namedtuple('Ast','n c',defaults=(None,))):
  def __repr__(s): return repr_ast(s)
@@ -65,7 +64,8 @@ def _Parse(t:list,verbose:int)->Ast:
  def rq(k:Ast):#juxtaposition-based syntax: projection and composition
   while s and str(s[-1].name) not in OPAREN+ENDEXP:
    x,a = s.pop()
-   k = Ast('cmp',(Ast('prj',(Ast(x),d.pop())),k) if a==2 else Ast(Ast(x),k))
+   k = Ast((Ast('prj',(Ast(x),d.pop())) if a==2 else Ast(x)), k)
+   # k = Ast('cmp',(Ast('prj',(Ast(x),d.pop())),k) if a==2 else Ast(Ast(x),k))
   d.append(k); debug('rq')
 
  def loop(i=0) -> int|None:#return index of error-causing token (if any), else None
@@ -96,16 +96,13 @@ def _Parse(t:list,verbose:int)->Ast:
     if i>=z: return
     c,i,n = t[i],i+1,nn(i); debug(c,'↔',n or 'END')
     if balance(c): return i
-    # if type(c)==tuple: d.append(Ast('vec',list(map(Ast,c)))); continue
     if   c in WHITESPACE and n=='/': return
     if   c in WHITESPACE: continue
     if   c in ENDEXP: reduce(OPAREN); pad(n); s.append(Op(';',2))
     elif c in OPAREN: c in "({" and s.append(Op(d.pop(),1)); pad(n); s.append(Op(c,2))
     elif c in CPAREN:
      reduce(OPAREN); rp(x:=s.pop())
-     if s and s[-1].name=='{' and x.name=='[' and n!='}':
-      print('rp binary',s,d)
-      s.append(Op(';',2))
+     if s and s[-1].name=='{' and x.name=='[' and n!='}': s.append(Op(';',2))
      else: continue
     elif c in ADVERB:
      k = Ast(c,d.pop())#bind adverb to whatever
@@ -113,7 +110,9 @@ def _Parse(t:list,verbose:int)->Ast:
      if s:
       debug('adverb')
       if not noun(str(s[-1].name)): s.append(Op(k,1))
-      else: d.append(Ast(s.pop().name)); s.append(Op(k,2))
+      else:
+        d.append(s.pop().name)
+        s.append(Op(k,2))
      else: s.append(Op(k,1))
      if s[-1].arity==2: pad(n)
     elif c in ASSIGN:
