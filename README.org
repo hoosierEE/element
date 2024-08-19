@@ -81,21 +81,20 @@ Planned features:
 - lexical scope
 - closures
 - string data type (distinct from "list of char") as in [[https://codeberg.org/anaseto/goal/src/branch/master][goal]]
-- short-circuiting =and= and =or= keywords also from [[https://codeberg.org/anaseto/goal/src/branch/master][goal]]
-- =x:y= assign (immutable) variable
-- =x::y= assign (mutable) variable
-- Transitive mutability - parts of mutable structures are mutable, parts of immutable structures are immutable.
-- No modified assignment operators. Use =a::a+1= instead of =a+:1=.
-  Meanwhile, verb-then-colon is still "force unary", so =a-:b= is =a(-b)=.
+- keywords:
+  - short-circuiting =and= and =or= (from [[https://codeberg.org/anaseto/goal/src/branch/master][goal]])
+  - =in= membership test like Python
+  - =import= and =export= for modules
 - In Element, =a;b= is always two separate expressions evaluated left to right regardless of context.
   This is most noticeable when you have assignments in lists or function calls.
-  For example, =f[a+b;a:1;b:2]= or =(a+b;a:1;b:2)= are valid in K but not in Element.
-
+  For example =(a:3;a+1)= is fine in Element but not K.
 Aspirational features:
-- module system: =require x=, =provide x=
+- type annotations ={[a:dict;b:int]:int a.f + b}=
+- dict literal syntax
+- mutable value semantics as in [[https://boomla.com/docs/simple-fast-value-semantics][Boomla]]
 - REPL-specific:
-  - =\cd some/other/directory=
-  - =delete= function to forget a defined variable
+  - =cd= function to change directory as in =cd "../relative/path"=
+  - =del= function to forget a defined variable
 
 * Install
 Compile for GPU with NVIDIA's =nvcc= compiler:
