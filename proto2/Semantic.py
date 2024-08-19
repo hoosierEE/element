@@ -55,18 +55,17 @@ def get_params(a:Ast) -> str:
  match a:
   case ('x'|'y'|'z',None): return a.n
   case (':'|'::',(b,c)) if b.n in ('x','y','z'): return get_params(c)
-  case str()|None: return ''
-  case tuple(): return ''.join(map(get_params,a))
-  case _: return get_params(a.n)+get_params(a.c)
+  case str()|None|('{',*_): return ''
+  case tuple()|list(): return ''.join(map(get_params,a))
+  case _: return formalize(a)  # mutual recursion to handle things like {x+{y}[2;3]}
 
 def formalize(a:Ast) -> Ast:
  '''add formal arguments to lambdas'''
  match a:
-  case ('{',(body,)): return Ast('{',(Ast('[',get_params(body)), formalize(body)))
-  case ('{',(('[',args),body)): return Ast('{',(Ast('[',args), formalize(body)))
-  case ('{',tuple() as c): return Ast('{',(Ast('[',tuple(map(Ast,get_params(c)))), formalize(c)))
-  case (b,tuple() as c):return Ast(formalize(b),tuple(map(formalize,c)))
-  case (b,c): return Ast(formalize(b),formalize(c))
+  case ('{',(('[',args),*body)): return Ast('{', (Ast('[',args), tuple(map(formalize,body))))
+  case ('{',*body): p=tuple(map(Ast,get_params(body))) or NIL; return Ast('{',(Ast('[',p), formalize(body)))
+  case Ast(): return Ast(formalize(a.n), formalize(a.c)) if a.c else Ast(formalize(a.n))
+  case tuple()|list(): return tuple(map(formalize,a))
   case _: return a
 
 def Sema(a:Ast) -> Ast|Val:
