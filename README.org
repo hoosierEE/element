@@ -1,4 +1,6 @@
 * Element
+
+
 /A data-oriented language for parallel hardware./
 
 - what: syntax and semantics based on [[https://en.wikipedia.org/wiki/K_(programming_language)][K]] (and [[https://codeberg.org/anaseto/goal/src/branch/master][Goal]]) with implicit multi-core and GPU acceleration
